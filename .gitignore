@@ -33,3 +33,4 @@ token.json
 *.swp
 Thumbs.db
 desktop.ini
+release/

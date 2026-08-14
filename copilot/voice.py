@@ -71,6 +71,12 @@ SCRIPT = paths.resource("copilot", "speaker.ps1")
 # project, so the folder a user can delete to start over holds everything.
 VOICES_DIR = Path(os.environ.get("NOD_HOME", Path.home() / ".nod")) / "voices"
 
+# The voice that ships inside the application, so a fresh install speaks
+# immediately instead of asking for a download first. Adds ~60 MB to the build
+# and removes an entire class of "it does not talk" from a tester's first five
+# minutes, which is a trade worth making once.
+BUNDLED_VOICE = paths.resource("assets", "voice", "en_US-hfc_male-medium.onnx")
+
 VOICE_HINT = "David"     # the SAPI male voice; override with --voice Zira
 RATE = 0                 # SAPI scale is -10..10. 0 is the engine's normal
                          # pace; 1 sounded brisk in isolation and turned out
@@ -161,19 +167,32 @@ class Speaker(threading.Thread):
 
     # -- the local neural voice ------------------------------------------
     def _piper_model(self) -> Path | None:
-        """The .onnx to speak with, or None if none has been downloaded."""
+        """The .onnx to speak with, or None if there is not one anywhere.
+
+        Three places, in order: whatever was configured, anything the user has
+        downloaded into ~/.nod/voices, and finally the voice shipped inside the
+        application itself. That last one is why a fresh install speaks at all
+        -- a tester has an empty ~/.nod, and "download a voice first" is not an
+        instruction anyone should have to follow before hearing anything.
+        """
         if self.voice_model:
             path = Path(self.voice_model)
-            return path if path.exists() else None
-        folder = VOICES_DIR
-        if not folder.is_dir():
+            if path.exists():
+                return path
+            # A config pointing at a voice that is not on *this* machine, which
+            # is exactly what happens when settings are copied between them.
+            bundled = BUNDLED_VOICE
+            if bundled.exists():
+                self.bus.say(f"voice: {path.name} is missing, using the built-in one")
+                return bundled
             return None
 
-        # Newest first, so downloading a voice to try switches to it.
+        folder = VOICES_DIR
         found = sorted(folder.glob("*.onnx"),
-                       key=lambda p: p.stat().st_mtime, reverse=True)
+                       key=lambda p: p.stat().st_mtime, reverse=True) \
+            if folder.is_dir() else []
         if not found:
-            return None
+            return BUNDLED_VOICE if BUNDLED_VOICE.exists() else None
 
         # ...but skip multi-speaker models unless a speaker has been chosen.
         # en_GB-vctk-medium holds 109 voices, and picking it with no speaker_id

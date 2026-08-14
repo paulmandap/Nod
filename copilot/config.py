@@ -80,11 +80,17 @@ DEFAULTS = {
     "voice": None,
     "speech_rate": None,
     "voice_engine": None,     # None = piper if downloaded, else SAPI
-    "voice_model": None,      # a specific .onnx; None = newest in ~/.nod/voices
+    # None means: whatever is in ~/.nod/voices, else the bundled voice.
+    # Never a path from the build machine -- see voice._piper_model.
+    "voice_model": None,
     "voice_speaker_id": None, # which voice inside a multi-speaker model
     "voice_length_scale": None,  # >1.0 is slower and more composed
-    "persona": "plain",       # "plain" or "butler"; see persona.py
-    "accent": None,           # "ph" for Philippine English; see accent.py
+    # The shipped character. Both are switchable at runtime, but these
+    # are what a friend hears on first launch, so they are the ones that
+    # matter: a formal register (persona.py) spoken in Philippine
+    # English (accent.py), on the bundled American voice.
+    "persona": "butler",
+    "accent": "ph",
 
     "agent": True,
     "no_summary": True,

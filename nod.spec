@@ -22,6 +22,10 @@ datas = [
     ('copilot/speaker.ps1', 'copilot'),            # or Nod cannot speak
     ('datasets/commands.train.jsonl', 'datasets'),  # or local intent degrades
     ('README-FOR-TESTERS.md', '.'),
+    # The voice itself, ~60 MB. Bundled rather than downloaded so a
+    # tester with an empty ~/.nod hears something on first launch.
+    ('assets/voice/en_US-hfc_male-medium.onnx', 'assets/voice'),
+    ('assets/voice/en_US-hfc_male-medium.onnx.json', 'assets/voice'),
 ]
 
 # soundcard reads a .h file from its own package directory at import time (CFFI

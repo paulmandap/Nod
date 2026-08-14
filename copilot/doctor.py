@@ -188,19 +188,31 @@ def check_voice(cfg: dict | None = None) -> Check:
     """
     cfg = cfg or {}
     if (cfg.get("voice_engine") or "piper") != "sapi":
-        from .voice import VOICES_DIR
+        # Resolved by asking a Speaker, not by globbing ~/.nod/voices. Those
+        # two answers differ on a fresh install -- there is a voice bundled
+        # inside the application that the folder knows nothing about -- and a
+        # doctor that reports "Windows speech" while the app is using a neural
+        # voice is worse than one that says nothing.
+        from .bus import Bus
+        from .voice import Speaker
 
-        models = sorted(VOICES_DIR.glob("*.onnx")) if VOICES_DIR.is_dir() else []
-        if models:
+        speaker = Speaker(Bus(), voice_model=cfg.get("voice_model"),
+                          speaker_id=cfg.get("voice_speaker_id"))
+        model = speaker._piper_model()
+        if model:
             try:
                 import piper  # noqa: F401
 
-                return Check("Voice", OK, f"{models[0].stem} (local neural)")
+                detail = f"{model.stem} (local neural)"
+                acc = cfg.get("accent")
+                if acc and acc not in ("none", "neutral"):
+                    detail += f", {acc} pronunciation"
+                return Check("Voice", OK, detail)
             except Exception:
                 return Check("Voice", WARN,
-                             "a voice is downloaded but piper is not installed",
+                             "a voice is available but piper is not installed",
                              "Reinstall Nod, or run: pip install piper-tts")
-        # No model: SAPI is the intended fallback, not a failure.
+        # No model anywhere: SAPI is the intended fallback, not a failure.
     return _check_sapi_voice()
 
 
