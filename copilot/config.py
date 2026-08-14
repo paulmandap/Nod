@@ -79,6 +79,9 @@ DEFAULTS = {
     "camera": None,
     "voice": None,
     "speech_rate": None,
+    "voice_engine": None,     # None = piper if downloaded, else SAPI
+    "voice_model": None,      # a specific .onnx; None = newest in ~/.nod/voices
+
     "agent": True,
     "no_summary": True,
     "no_vision": True,

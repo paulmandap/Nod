@@ -179,7 +179,32 @@ def check_camera() -> Check:
     return Check("Camera", OK, cams[0])
 
 
-def check_voice() -> Check:
+def check_voice(cfg: dict | None = None) -> Check:
+    """Which voice will Nod actually speak with?
+
+    Piper first, because it is what the user hears when a model is present.
+    Falling back to SAPI is fine and silent, so the report has to say which one
+    is live -- "why does it sound different today" is otherwise unanswerable.
+    """
+    cfg = cfg or {}
+    if (cfg.get("voice_engine") or "piper") != "sapi":
+        from .voice import VOICES_DIR
+
+        models = sorted(VOICES_DIR.glob("*.onnx")) if VOICES_DIR.is_dir() else []
+        if models:
+            try:
+                import piper  # noqa: F401
+
+                return Check("Voice", OK, f"{models[0].stem} (local neural)")
+            except Exception:
+                return Check("Voice", WARN,
+                             "a voice is downloaded but piper is not installed",
+                             "Reinstall Nod, or run: pip install piper-tts")
+        # No model: SAPI is the intended fallback, not a failure.
+    return _check_sapi_voice()
+
+
+def _check_sapi_voice() -> Check:
     """Can PowerShell actually run the speech script?
 
     Catches AppLocker and Constrained Language Mode on managed laptops, which
@@ -207,7 +232,7 @@ def check_voice() -> Check:
         except Exception:
             proc.terminate()
         if ready == "READY":
-            return Check("Voice", OK, "Windows speech is working")
+            return Check("Voice", OK, "Microsoft David (Windows speech)")
         return Check("Voice", FAIL, f"speaker.ps1 said {ready!r}",
                      "Windows would not start Nod's voice. This PC may block "
                      "PowerShell scripts.", "Nod speaking out loud")
@@ -363,7 +388,7 @@ def run(cfg: dict | None = None, quick: bool = False) -> list[Check]:
         _check("Nod's own files", check_bundle),
         _check("Python packages", check_packages),
         _check("Microphone", check_microphone),
-        _check("Voice", check_voice),
+        _check("Voice", lambda: check_voice(cfg)),
         _check("Browser", check_browser),
         _check("Screen reading", check_tesseract),
         _check("Disk space", check_disk),

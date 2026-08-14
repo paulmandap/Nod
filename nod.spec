@@ -31,6 +31,11 @@ datas = [
 # missing data file.
 datas += collect_data_files('soundcard', includes=['*.h'])
 
+# Piper phonemises through espeak-ng, which reads a 373-file data directory
+# from inside its own package at runtime. Without it the voice loads and then
+# produces silence, which is a maddening thing to debug from a screenshot.
+datas += collect_data_files('piper', includes=['espeak-ng-data/**'])
+
 # googleapiclient's discovery documents are handled after Analysis instead --
 # see the filter below. Asking collect_data_files for one of them does not help,
 # because PyInstaller's own googleapiclient hook collects all 586 regardless.
@@ -47,16 +52,20 @@ hiddenimports = [
     'google_auth_oauthlib.flow',
     'googleapiclient.discovery',
     'dateutil.rrule',
+    'piper',
+    'piper.espeakbridge',
+    'onnxruntime',
 ]
 
 excludes = [
-    # ~97 MB. faster_whisper imports onnxruntime lazily, inside the Silero VAD
-    # path, and every transcribe() call in this project passes vad_filter=False
-    # (copilot/transcribe.py, copilot/listen.py). test_startup.py asserts that
-    # stays true, because turning VAD on would break this exclusion at runtime
-    # on someone else's machine rather than here.
-    'onnxruntime', 'sympy', 'mpmath', 'flatbuffers',
-    'coloredlogs', 'humanfriendly',
+    # onnxruntime used to be excluded here, worth ~97 MB with sympy: nothing
+    # needed it, because faster_whisper only imports it inside the Silero VAD
+    # path and every transcribe() call passes vad_filter=False.
+    #
+    # Piper runs its voice model on onnxruntime, so it comes back. The
+    # vad_filter assertion in test_startup.py stays anyway -- it now guards
+    # against a silent 40 MB rather than a broken build, and the reasoning is
+    # worth keeping written down either way.
 
     # Never imported by Nod.
     'tkinter', 'matplotlib', 'pandas', 'scipy', 'IPython', 'pytest',

@@ -42,6 +42,13 @@ google-api-python-client~=2.100
 google-auth-oauthlib~=1.2
 python-dateutil~=2.9      # RRULE expansion for recurring meetings in ICS mode
 
+# --- voice ---
+# Local neural text-to-speech. Runs on CPU at about 14x realtime once
+# warm, needs no API key and no network, and the voice models are plain
+# files under ~/.nod/voices. Windows SAPI stays as the fallback for when
+# no model has been downloaded.
+piper-tts~=1.6
+
 # --- ui ---
 PyQt6~=6.6
 pynput~=1.7               # global hotkeys

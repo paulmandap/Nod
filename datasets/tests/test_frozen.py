@@ -72,10 +72,22 @@ def main() -> int:
     # check is the "Python packages" one below, which runs importlib inside the
     # frozen process -- strictly better evidence than a filename.
 
+    print("\nThe voice, which is the newest thing to go missing quietly")
+    # Piper loads its model on onnxruntime and phonemises through espeak-ng,
+    # reading a 373-file data directory out of its own package at runtime.
+    # Without that directory the voice loads and then produces silence, which
+    # is close to impossible to diagnose from a tester's screenshot.
+    bad += check("onnxruntime is present", (internal / "onnxruntime").exists(),
+                 "(piper runs the voice model on it)")
+    bad += check("espeak-ng-data is present",
+                 (internal / "piper" / "espeak-ng-data").is_dir(),
+                 "(without it the voice is silent, not broken)")
+    bad += check("the espeak bridge is present",
+                 any((internal / "piper").glob("espeakbridge*")))
+
     print("\nThings the spec deliberately excluded")
-    for name in ("onnxruntime", "sympy"):
-        bad += check(f"{name} is absent", not (internal / name).exists(),
-                     "(the ~97 MB exclusion still holds)")
+    for name in ("sympy", "tkinter", "matplotlib"):
+        bad += check(f"{name} is absent", not (internal / name).exists())
 
     print("\nThe exe runs and can examine itself")
     if REPORT.exists():

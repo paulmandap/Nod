@@ -257,6 +257,10 @@ def main() -> int:
                     help="SAPI voice name fragment: David (male), Zira (female)")
     ap.add_argument("--speech-rate", type=int, default=None,
                     help="SAPI rate, -10 (slow) to 10 (fast); 0 is normal")
+    ap.add_argument("--voice-engine", default=None, choices=["piper", "sapi"],
+                    help="piper is the local neural voice; sapi is Windows'")
+    ap.add_argument("--voice-model", default=None,
+                    help="path to a specific piper .onnx voice")
     # The wake word's energy thresholds. Exposed because the built-in values are
     # tuned to a close-talk headset: on a laptop's built-in array mic, speech
     # lands well under START_RMS and the wake word never fires at all, with no
@@ -341,7 +345,8 @@ def main() -> int:
     # The speaker is passed into the listener rather than reached through the
     # bus because the listener must know, synchronously, whether Nod is
     # mid-sentence — otherwise it transcribes its own voice and wakes itself up.
-    speaker = Speaker(bus, args.voice, args.speech_rate)
+    speaker = Speaker(bus, args.voice, args.speech_rate,
+                      engine=args.voice_engine, voice_model=args.voice_model)
 
     # Factories rather than instances, because a Thread cannot be restarted once
     # run() has returned -- and restarting them is the entire point. Three of
