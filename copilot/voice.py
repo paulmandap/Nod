@@ -1,24 +1,43 @@
-"""Nod's voice, on the SAPI engine Windows already ships.
+"""Nod's voice: a local neural model, falling back to what Windows ships.
 
-`pyttsx3` or `pywin32` would be the obvious way to reach SAPI, but both are
-installs, and the reason for picking SAPI over a neural voice was that this
-machine already has everything needed. So we keep one PowerShell process warm
-running `speaker.ps1`, and hand it one line of text per utterance on stdin.
+Two engines, chosen automatically.
 
-Two details in there matter more than they look:
+  Piper is preferred. It runs a small neural voice model on onnxruntime, on the
+  CPU, at roughly 14x realtime -- local, free, no API key, no quota, and the
+  voices are plain files under ~/.nod/voices that a user can add to or delete.
+  This replaced SAPI after a request for a much better voice; a cloud service
+  was the obvious alternative and the wrong one, because a network round trip
+  per sentence undoes the responsiveness the rest of this file exists to
+  protect, and adds a second quota to run out of.
 
-  Warmth. Spawning a PowerShell per utterance costs 300-600 ms of startup, and
-  the whole point of a local voice is that "mhm?" lands immediately -- half a
-  second of dead air before a two-phoneme acknowledgement reads as a hang
-  rather than a reply. Keeping the process alive makes that a one-off at boot.
+  SAPI stays as the fallback, reached through a warm PowerShell process running
+  `speaker.ps1`. It needs no download at all, so it is what speaks on a machine
+  where no voice model has been fetched yet.
 
-  Data, not code. The text crosses as a line on stdin and is only ever bound to
-  a variable on the other side. Nothing Nod says is parsed as PowerShell, which
-  matters because what it says is assembled from calendar entries and speech
-  recognition -- a meeting titled `$(rm -r ...)` is read aloud, not run.
+Three details matter more than they look:
+
+  Warmth. Piper's first synthesis after loading takes 2.2 s while onnxruntime
+  builds its execution plan, against 100-300 ms for every one after it; the
+  SAPI process costs 300-600 ms to spawn. Both are paid at startup, because
+  the whole point of a local voice is that "Yes?" lands immediately, and paying
+  either lazily spends it on precisely the first acknowledgement.
+
+  Smoothness. Audio is handed to the sound card in slices, and the size of
+  those slices is audible -- see SLICE_MS. Synthesis also runs a sentence ahead
+  of playback on its own thread, and leftover samples are carried across
+  sentence boundaries, so a multi-sentence answer is one continuous stream
+  rather than a series of little stalls.
+
+  Data, not code. On the SAPI path the text crosses as a line on stdin and is
+  only ever bound to a variable on the other side. Nothing Nod says is parsed
+  as PowerShell, which matters because what it says is assembled from calendar
+  entries and speech recognition -- a meeting titled `$(rm -r ...)` is read
+  aloud, not run.
 
 `speaking` is exposed because the mic listener needs it: without it Nod hears
 its own voice through the microphone and cheerfully transcribes itself.
+
+To hear what is installed:  python -m copilot.voice
 """
 
 from __future__ import annotations
@@ -28,6 +47,7 @@ import queue
 import re
 import subprocess
 import threading
+import time
 from pathlib import Path
 
 from . import paths, perf
@@ -176,39 +196,110 @@ class Speaker(threading.Thread):
             self._piper_failed = True
         return self._piper
 
-    def _speak_piper(self, voice, sentences: list[str]) -> None:
-        """Synthesise and play, in chunks small enough to stop mid-word.
+    # How much audio to hand the sound card at a time. This is the one number
+    # in the file that has to be right, and getting it wrong is audible.
+    #
+    # It trades two things off. Small slices mean "stop" lands sooner, since
+    # the cancel flag is only checked between them. Too small and the device
+    # starves between writes and the speech comes out choppy -- measured on
+    # this machine, 100 ms slices against a matching 100 ms device buffer
+    # played a 4.48 s sentence in 4.66 s, and every one of those 180 ms of
+    # overrun was a gap someone could hear.
+    #
+    # 250 ms slices, with the device left to pick its own buffer size, played
+    # the same sentence in 4.50 s -- 20 ms over, inaudible -- while still
+    # cutting off within a quarter second of being told to stop.
+    SLICE_MS = 250
 
-        SAPI could only be interrupted between sentences, because Speak()
-        blocks until the whole string is done. Here the audio is played in
-        ~100 ms slices with the cancel flag checked between them, so "stop"
-        takes effect almost immediately rather than at the next full stop.
+    def _speak_piper(self, voice, sentences: list[str]) -> None:
+        """Synthesise and play, in slices small enough to stop part-way.
+
+        SAPI could only ever be interrupted between sentences, because Speak()
+        blocks until the whole string is finished. Checking the cancel flag
+        between slices makes "stop" land inside a sentence instead.
         """
         import numpy as np
         import soundcard as sc
 
         rate = voice.config.sample_rate
-        speaker = sc.default_speaker()
-        slice_frames = max(1, rate // 10)
+        slice_frames = max(1, int(rate * self.SLICE_MS / 1000))
 
-        with speaker.player(samplerate=rate, blocksize=slice_frames) as player:
-            for i, sentence in enumerate(sentences):
-                if self._cancel.is_set():
-                    break
-                self.current_line = sentence
-                if i == 0:
-                    perf.mark("speech.start", sentence[:40])
+        # No blocksize: soundcard picks one that suits the device. Forcing it
+        # to match the slice size is what caused the underruns above.
+        # Synthesis runs one sentence ahead of playback, on its own thread.
+        #
+        # Doing it inline instead is what a first attempt looks like, and it
+        # leaves a gap between every sentence while the next one is generated
+        # -- about 300 ms of silence mid-answer, which sounds like stuttering
+        # rather than like a pause for breath. Piper runs at roughly 14x
+        # realtime, so a single sentence of lookahead is always ready before
+        # it is wanted, and the queue bound keeps memory flat on long answers.
+        ready: queue.Queue = queue.Queue(maxsize=2)
 
-                for chunk in voice.synthesize(sentence):
+        def synthesise() -> None:
+            try:
+                for sentence in sentences:
                     if self._cancel.is_set():
                         break
-                    samples = np.asarray(chunk.audio_int16_array,
-                                         dtype=np.int16).astype(np.float32)
-                    samples /= 32768.0
-                    for at in range(0, len(samples), slice_frames):
-                        if self._cancel.is_set():
-                            break
-                        player.play(samples[at:at + slice_frames])
+                    chunks = [np.asarray(c.audio_int16_array, dtype=np.int16)
+                              for c in voice.synthesize(sentence)]
+                    if not chunks:
+                        continue
+                    samples = np.concatenate(chunks).astype(np.float32) / 32768.0
+                    ready.put((sentence, samples))
+            except Exception:
+                pass
+            finally:
+                ready.put(None)          # end marker, always sent
+
+        worker = threading.Thread(target=synthesise, name="piper-synth",
+                                  daemon=True)
+        worker.start()
+
+        first = True
+        # Whatever was left over from the previous sentence, carried forward so
+        # every write to the device is a full slice.
+        #
+        # Playing each sentence as its own run of slices leaves a short, ragged
+        # final write at every boundary, and the device starves there: measured
+        # across four sentences that cost 0.6 s of overrun, heard as a stutter
+        # between them. Carrying the remainder makes the whole answer one
+        # continuous stream, with a partial write only at the very end.
+        carry = np.empty(0, dtype=np.float32)
+
+        with sc.default_speaker().player(samplerate=rate) as player:
+            while not self._cancel.is_set():
+                try:
+                    item = ready.get(timeout=30)
+                except queue.Empty:
+                    break
+                if item is None:
+                    if len(carry) and not self._cancel.is_set():
+                        player.play(carry)
+                    break
+
+                sentence, samples = item
+                self.current_line = sentence
+                if first:
+                    perf.mark("speech.start", sentence[:40])
+                    first = False
+
+                stream = np.concatenate((carry, samples)) if len(carry) else samples
+                full = (len(stream) // slice_frames) * slice_frames
+                for at in range(0, full, slice_frames):
+                    if self._cancel.is_set():
+                        break
+                    player.play(stream[at:at + slice_frames])
+                carry = stream[full:]
+
+        # Drain so the producer cannot outlive this call. On an interrupt it is
+        # usually blocked in ready.put() against the bounded queue; taking
+        # items off frees it to notice the cancel flag and exit.
+        while worker.is_alive():
+            try:
+                ready.get_nowait()
+            except queue.Empty:
+                worker.join(0.05)
 
     # -- speaking --------------------------------------------------------
     def say_now(self, text: str) -> None:
@@ -272,3 +363,75 @@ class Speaker(threading.Thread):
                 proc.wait(timeout=2)
             except Exception:
                 proc.terminate()
+
+
+def _voices() -> list[Path]:
+    return sorted(VOICES_DIR.glob("*.onnx")) if VOICES_DIR.is_dir() else []
+
+
+def audition(text: str = "", model: str | None = None) -> int:
+    """Hear the installed voices, so choosing one is not guesswork.
+
+        python -m copilot.voice                  # every voice, in turn
+        python -m copilot.voice --model ryan     # just that one
+        python -m copilot.voice --set ryan       # pick it and save
+
+    Voice quality is the one thing in this project that cannot be measured --
+    latency and dropouts have numbers, "does this sound right" does not. So
+    this exists to put the choice in front of the person who has to listen
+    to it.
+    """
+    from .bus import Bus
+
+    found = _voices()
+    if not found:
+        print(f"No voices in {VOICES_DIR}")
+        print("Download one with, from inside that folder:")
+        print("    python -m piper.download_voices en_US-ryan-high")
+        return 1
+
+    if model:
+        found = [p for p in found if model.lower() in p.stem.lower()] or found
+
+    line = text or ("Yes, boss? The exchange rate is about fifty eight pesos "
+                    "to the dollar today.")
+    bus = Bus()
+    for path in found:
+        print(f"\n  {path.stem}  ({path.stat().st_size / 1e6:.0f} MB)")
+        speaker = Speaker(bus, voice_model=str(path))
+        if not speaker._ensure_piper():
+            print("    could not load")
+            continue
+        speaker.say_now(line)
+        time.sleep(0.4)
+
+    print(f"\nTo keep one:  python -m copilot.voice --set <name>")
+    return 0
+
+
+if __name__ == "__main__":
+    import argparse
+    import time
+
+    from . import config
+
+    ap = argparse.ArgumentParser(prog="copilot.voice")
+    ap.add_argument("--model", default=None,
+                    help="only audition voices matching this")
+    ap.add_argument("--set", dest="pick", default=None,
+                    help="save the matching voice as the one to use")
+    ap.add_argument("--say", default="", help="say this instead of the sample")
+    ns = ap.parse_args()
+
+    if ns.pick:
+        match = [p for p in _voices() if ns.pick.lower() in p.stem.lower()]
+        if not match:
+            print(f"No voice matching {ns.pick!r} in {VOICES_DIR}")
+            raise SystemExit(1)
+        cfg = config.load()
+        cfg["voice_model"] = str(match[0])
+        config.save(cfg)
+        print(f"Nod will now speak with {match[0].stem}")
+        raise SystemExit(0)
+
+    raise SystemExit(audition(ns.say, ns.model))
