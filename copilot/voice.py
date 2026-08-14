@@ -165,10 +165,35 @@ class Speaker(threading.Thread):
         folder = VOICES_DIR
         if not folder.is_dir():
             return None
-        # Newest first, so downloading a second voice switches to it.
+
+        # Newest first, so downloading a voice to try switches to it.
         found = sorted(folder.glob("*.onnx"),
                        key=lambda p: p.stat().st_mtime, reverse=True)
-        return found[0] if found else None
+        if not found:
+            return None
+
+        # ...but skip multi-speaker models unless a speaker has been chosen.
+        # en_GB-vctk-medium holds 109 voices, and picking it with no speaker_id
+        # means whichever one happens to be index 0 -- an arbitrary voice, of
+        # an arbitrary gender and accent, with nothing in the interface to
+        # explain why. Auditioning it is a deliberate act; falling into it is
+        # not.
+        if self.speaker_id is None:
+            single = [p for p in found if not self._is_multi_speaker(p)]
+            if single:
+                return single[0]
+        return found[0]
+
+    @staticmethod
+    def _is_multi_speaker(model: Path) -> bool:
+        try:
+            import json
+
+            meta = json.loads(model.with_suffix(".onnx.json")
+                              .read_text(encoding="utf-8"))
+            return int(meta.get("num_speakers", 1)) > 1
+        except Exception:
+            return False
 
     def _synthesis_config(self):
         """Speaker and pace, or None to take the model's own defaults."""
