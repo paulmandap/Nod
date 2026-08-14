@@ -26,8 +26,63 @@ import requests
 
 
 class QuotaExhausted(RuntimeError):
-    """429 from the API. Separate from other failures because it is the one
-    the user can act on -- it means wait, not retry."""
+    """429 from the API.
+
+    Carries *which* limit was hit, because the two mean completely different
+    things and were being treated identically:
+
+      per minute  ~15 requests on the free tier, and one spoken question can
+                  spend five of them (a classify call plus up to four tool
+                  rounds, all on the same model). Recovers in under a minute.
+      per day     500 per model. Recovers tomorrow.
+
+    Everything treated any 429 as terminal, said "I'm out of API quota for
+    today", and switched to the local model permanently -- so a burst of four
+    questions in a minute took the assistant offline for the rest of the
+    session, and told the user something untrue about why.
+    """
+
+    def __init__(self, message: str, per_day: bool = False,
+                 retry_after: float = 60.0) -> None:
+        super().__init__(message)
+        self.per_day = per_day
+        self.retry_after = retry_after
+
+
+def _read_quota(payload: dict) -> tuple[bool, float]:
+    """Pull (per_day, retry_after) out of a 429 body.
+
+    Google returns google.rpc.QuotaFailure with a quotaId naming the limit, and
+    usually a google.rpc.RetryInfo with how long to wait. Both are best-effort:
+    an unparseable body is treated as a per-minute limit, because that is both
+    the common case and the safe one -- assuming per-day would take the
+    assistant offline for hours over a transient burst.
+    """
+    per_day, retry_after = False, 0.0
+    try:
+        for detail in payload.get("error", {}).get("details", []):
+            kind = detail.get("@type", "")
+            if kind.endswith("QuotaFailure"):
+                for violation in detail.get("violations", []):
+                    quota_id = (violation.get("quotaId", "")
+                                or violation.get("quotaMetric", ""))
+                    if "PerDay" in quota_id:
+                        per_day = True
+            elif kind.endswith("RetryInfo"):
+                raw = str(detail.get("retryDelay", "")).rstrip("s")
+                try:
+                    retry_after = float(raw)
+                except ValueError:
+                    pass
+    except Exception:
+        pass
+
+    if not retry_after:
+        # A per-minute window is 60 s wide; give it a little room. A per-day
+        # limit is not worth retrying often, but is still retried, because the
+        # quota resets on Google's clock and not on ours.
+        retry_after = 900.0 if per_day else 65.0
+    return per_day, retry_after
 
 
 def post_gemini(session: requests.Session, url: str, key: str, body: dict,
@@ -49,7 +104,14 @@ def post_gemini(session: requests.Session, url: str, key: str, body: dict,
         r = session.post(url, headers=headers, json=retry, timeout=timeout)
 
     if r.status_code == 429:
-        raise QuotaExhausted("out of Gemini quota")
+        try:
+            per_day, retry_after = _read_quota(r.json())
+        except Exception:
+            per_day, retry_after = False, 65.0
+        raise QuotaExhausted(
+            "out of Gemini quota for today" if per_day
+            else f"sending too fast; retry in {retry_after:.0f}s",
+            per_day=per_day, retry_after=retry_after)
     if r.status_code != 200:
         raise RuntimeError(f"HTTP {r.status_code}: {r.text[:200]}")
     return r.json()

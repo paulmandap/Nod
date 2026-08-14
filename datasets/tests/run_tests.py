@@ -37,6 +37,7 @@ OFFLINE = [
     "test_barge_in.py",
     "test_spoken_errors.py",
     "test_meet_gate.py",
+    "test_quota.py",
     "test_supervise.py",
 ]
 

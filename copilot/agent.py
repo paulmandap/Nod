@@ -21,12 +21,14 @@ import json
 import os
 import queue
 import threading
+import time
 
 import requests
 
 from . import failure, perf
 from .bus import Bus, Suggestion
 from .hardware import detect
+from .llm import RateGate
 from .llm_util import QuotaExhausted, first_candidate_text, post_gemini
 
 
@@ -185,6 +187,11 @@ class Agent(threading.Thread):
 
     daemon = True
 
+    # Under the free tier's ~15/min for flash-lite, and deliberately well
+    # under: a single question is a classify call plus up to MAX_ROUNDS tool
+    # rounds, so the worst case for one spoken sentence is five requests.
+    RPM_LIMIT = 10
+
     def __init__(self, bus: Bus, speaker, api_key: str | None = None,
                  camera_hint: str | None = None, local_intent: bool = False,
                  allow_unconfirmed_camera: bool = False) -> None:
@@ -208,8 +215,22 @@ class Agent(threading.Thread):
         self._browser = None      # one Chrome, reused for meetings and music
         # "local" pins answering to Ollama; None means Gemini with fallback.
         self.force_model: str | None = None
-        self.fallback_local = False
+        # When Gemini is being rested, as a timestamp rather than a boolean.
+        #
+        # This was `fallback_local = True`, set on the first 429 and never
+        # cleared, so a single per-minute rate limit -- which clears in under a
+        # minute -- moved answering to the local model for the rest of the
+        # session and announced it as being out of quota for the day. Five
+        # questions in quick succession was enough to trigger it, because one
+        # question can spend a classify call plus four tool rounds on the same
+        # model's per-minute allowance.
+        self._gemini_rested_until = 0.0
         self._announced_fallback = False
+        # Client-side pacing, so the limit is usually not reached at all. A 429
+        # costs a full round trip and returns nothing; declining to send costs
+        # nothing. Same reasoning as llm.RateGate, which the summariser has had
+        # all along -- the assistant simply never got one.
+        self.gate = RateGate(self.RPM_LIMIT)
         # The transcript of the instruction currently being acted on.
         self._heard = ""
 
@@ -239,10 +260,19 @@ class Agent(threading.Thread):
         try:
             payload = post_gemini(self.session, ENDPOINT, self.api_key, body,
                                   timeout=12)
-        except QuotaExhausted:
-            self.bus.say("agent: out of quota for today")
-            self.bus.speech.put("I'm out of API quota for today.")
-            return None
+        except QuotaExhausted as exc:
+            self._rest_gemini(exc)
+            # Retry the classification on the local model rather than giving
+            # up on the sentence. Being rate limited for a minute should not
+            # cost the user the thing they just said.
+            try:
+                from . import local_intent
+
+                return local_intent.classify(text, SYSTEM)
+            except Exception:
+                if not exc.per_day:
+                    self.bus.speech.put("Give me a moment, I'm going too fast.")
+                return None
         except Exception as exc:
             self.bus.say(f"agent: {exc}")
             return None
@@ -349,23 +379,21 @@ class Agent(threading.Thread):
         self._card("Looking that up", [])
 
         def work():
-            local_only = self.force_model == "local" or self.fallback_local
+            local_only = self.force_model == "local" or self._resting()
             answer = sources = steps = None
 
             if not local_only:
                 try:
+                    if not self.gate.allow():
+                        # Our own limiter said no. Better to pause a moment
+                        # than to spend a round trip earning a 429 that would
+                        # then rest Gemini for a minute.
+                        time.sleep(2.0)
                     answer, sources, steps = brain.ask(
                         question, self.api_key, self.style, self.history)
-                except QuotaExhausted:
-                    # Out of quota is not a reason to go silent for the rest of
-                    # the day. Drop to the local model and say so -- once.
-                    self.fallback_local = True
+                except QuotaExhausted as exc:
                     local_only = True
-                    if not self._announced_fallback:
-                        self._announced_fallback = True
-                        self.bus.speech.put(
-                            "I'm out of Gemini quota, so I'll answer locally "
-                            "from now on. I can't look things up.")
+                    self._rest_gemini(exc)
                 except Exception as exc:
                     self.bus.say(f"ask: {type(exc).__name__}")
                     self._card("Lookup failed", [failure.card_detail(exc)],
@@ -524,8 +552,38 @@ class Agent(threading.Thread):
                     f"Agent — {'on' if self.bus.agent_on.is_set() else 'off'}"])
         return f"I'm {state}."
 
+    def _resting(self) -> bool:
+        """Is Gemini being rested after a rate limit?"""
+        return time.time() < self._gemini_rested_until
+
+    def _rest_gemini(self, exc: QuotaExhausted) -> None:
+        """Step aside for exactly as long as Google asked, then try again.
+
+        The old behaviour was permanent for the session and announced as being
+        out of quota for the day. Both were usually wrong: a per-minute limit
+        is the common case by far, it clears in under a minute, and saying
+        otherwise sent people looking at their billing.
+        """
+        self._gemini_rested_until = time.time() + exc.retry_after
+        perf.mark("gemini.rested",
+                  f"per_day={exc.per_day} for={exc.retry_after:.0f}s")
+        self.bus.say(f"gemini: resting {exc.retry_after:.0f}s ({exc})")
+
+        if exc.per_day:
+            # Worth saying out loud once: this one really does last.
+            if not self._announced_fallback:
+                self._announced_fallback = True
+                self.bus.speech.put(
+                    "I'm out of Gemini quota for today, so I'll answer locally. "
+                    "I can't look things up.")
+        else:
+            # Deliberately silent. A one-minute pause that fixes itself is not
+            # worth interrupting someone to explain, and the answer they asked
+            # for is still coming -- just from the local model.
+            self.bus.say("gemini: rate limited, using the local model briefly")
+
     def _brain_name(self) -> str:
-        if self.force_model == "local" or self.fallback_local:
+        if self.force_model == "local" or self._resting():
             return "the local model"
         return "Gemini"
 
@@ -538,8 +596,10 @@ class Agent(threading.Thread):
             return "Using the local model."
         if "gemini" in want or "cloud" in want or "flash" in want:
             self.force_model = None
-            self.fallback_local = False
-            self._card("Answering with Gemini", ["Falls back to local if quota runs out"])
+            # Asking for Gemini explicitly also ends any rate-limit rest early.
+            self._gemini_rested_until = 0.0
+            self._card("Answering with Gemini",
+                       ["Falls back to local if quota runs out"])
             return "Using Gemini."
 
         self._card("Model",
@@ -652,7 +712,9 @@ class Agent(threading.Thread):
                 self.bus.say("agent: GEMINI_API_KEY not set — commands ignored")
                 return
             self.bus.say("agent: no API key, answering locally")
-            self.fallback_local = True
+            # No key is not a rate limit -- it is permanent until one is set,
+            # so pin the local model rather than resting Gemini on a timer.
+            self.force_model = "local"
 
         while not self.bus.stop.is_set():
             try:

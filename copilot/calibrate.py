@@ -107,3 +107,79 @@ def describe(start: float, stop: float, noise: float, speech: float) -> str:
     """One line for the doctor's report."""
     return (f"room {noise:.4f}, speech {speech:.4f} "
             f"-> start {start:.4f}, stop {stop:.4f}")
+
+
+def meter(seconds: float = 20.0, device: str | None = None) -> int:
+    """A live level meter, so "Nod cannot hear me" becomes a number.
+
+        python -m copilot.calibrate
+
+    Everything about the wake word is downstream of one comparison: is this
+    block louder than START_RMS? When the answer is always no, nothing else in
+    the system produces any evidence at all -- no decode, no perf marker, no
+    status line -- because none of it ever runs. This prints the comparison.
+    """
+    import time
+
+    from .config import DEFAULTS, load
+
+    cfg = load()
+    start = float(cfg.get("start_rms") or DEFAULTS["start_rms"])
+    stop = float(cfg.get("stop_rms") or DEFAULTS["stop_rms"])
+    device = device or cfg.get("mic_device")
+
+    import soundcard as sc
+
+    mic = sc.get_microphone(device) if device else sc.default_microphone()
+    print(f"Microphone : {mic.name}")
+    print(f"Triggers at: {start:.4f}   (stops below {stop:.4f})")
+    print(f"\nTalk normally for {seconds:.0f} seconds. "
+          f"'#' means Nod would hear you.\n")
+
+    width = 46
+    peak = 0.0
+    heard = 0
+    blocks = int(seconds * SAMPLE_RATE / BLOCK_FRAMES)
+    with mic.recorder(samplerate=SAMPLE_RATE, blocksize=BLOCK_FRAMES) as rec:
+        for _ in range(blocks):
+            data = rec.record(numframes=BLOCK_FRAMES)
+            if data.ndim > 1:
+                data = data.mean(axis=1)
+            level = rms(data.astype(np.float32))
+            peak = max(peak, level)
+            over = level >= start
+            heard += over
+            # Log scale: speech and room noise are two orders of magnitude
+            # apart, and a linear bar shows that as "nothing" and "nothing".
+            filled = 0 if level <= 0 else min(
+                width, int((np.log10(level) + 4) / 4 * width))
+            bar = ("#" if over else "-") * filled
+            print(f"\r  {level:.4f} |{bar:<{width}}| "
+                  f"{'HEARD' if over else '     '}", end="", flush=True)
+            time.sleep(0.0)
+
+    print(f"\n\nLoudest: {peak:.4f}   Trigger: {start:.4f}")
+    if peak < start:
+        print("\n  Nod would never have heard you.")
+        print(f"  Your loudest was {start / max(peak, 1e-9):.1f}x too quiet.")
+        print("  Fix: run Nod, open Settings, and press Calibrate --")
+        print("  or pass --start-rms {:.4f} on the command line.".format(
+            max(peak * 0.35, MIN_START)))
+        return 1
+    pct = 100 * heard / max(blocks, 1)
+    print(f"\n  Nod heard you in {pct:.0f}% of that.")
+    if pct < 5:
+        print("  That is very low. Consider calibrating.")
+        return 1
+    print("  That is healthy.")
+    return 0
+
+
+if __name__ == "__main__":
+    import argparse
+
+    ap = argparse.ArgumentParser(prog="copilot.calibrate")
+    ap.add_argument("--seconds", type=float, default=20.0)
+    ap.add_argument("--device", default=None)
+    ns = ap.parse_args()
+    raise SystemExit(meter(ns.seconds, ns.device))
