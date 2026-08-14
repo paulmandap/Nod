@@ -28,7 +28,7 @@ import os
 
 import requests
 
-from . import perf, tools
+from . import perf, persona, tools
 from .llm_util import post_gemini
 
 # Deliberately a *different* model from the summariser's. The free-tier day
@@ -100,8 +100,16 @@ is stripped out before anything is spoken; it is for the overlay card. Example:
 STEPS: Heat pan on medium | Add butter | Crack egg in | Cook until white sets"""
 
 
-def system_prompt(style: str = "plain") -> str:
-    return BASE_SYSTEM + "\n" + STYLES.get(style, STYLES["plain"]) + STEPS_NOTE
+def system_prompt(style: str = "plain", persona_name: str | None = None) -> str:
+    """Base rules, then the explanation style, then the persona's register.
+
+    Style and persona are deliberately separate axes. Style is what the user
+    asks for out loud ("explain like I'm five"); persona is how Nod carries
+    itself, which they set once. A butler explaining something to a child is a
+    coherent thing to want, so neither overrides the other.
+    """
+    return (BASE_SYSTEM + "\n" + STYLES.get(style, STYLES["plain"])
+            + persona.answer_instructions(persona_name) + STEPS_NOTE)
 
 
 # One connection pool for the answering path. A question that triggers two tool
@@ -129,7 +137,7 @@ def split_steps(answer: str) -> tuple[str, list[str]]:
 
 
 def ask(question: str, api_key: str | None = None, style: str = "plain",
-        history: list[dict] | None = None) -> tuple[str, list[str], list[str]]:
+        history: list[dict] | None = None, persona_name: str | None = None) -> tuple[str, list[str], list[str]]:
     """Answer `question`, looking things up as needed.
 
     Returns (spoken_answer, sources, steps).
@@ -148,7 +156,8 @@ def ask(question: str, api_key: str | None = None, style: str = "plain",
 
     for round_no in range(MAX_ROUNDS):
         body = {
-            "systemInstruction": {"parts": [{"text": system_prompt(style)}]},
+            "systemInstruction": {"parts": [
+                {"text": system_prompt(style, persona_name)}]},
             "contents": contents,
             "tools": [{"functionDeclarations": tools.DECLARATIONS}],
             "generationConfig": {

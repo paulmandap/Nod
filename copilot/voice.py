@@ -103,6 +103,8 @@ class Speaker(threading.Thread):
         self.length_scale = length_scale
         self._piper = None
         self._syn = None
+        # Post-processing. Replaceable so the tuning CLI can A/B it.
+        self.fx = None
         self._piper_failed = False
         self._proc: subprocess.Popen | None = None
         self._lock = threading.Lock()
@@ -266,6 +268,12 @@ class Speaker(threading.Thread):
                     if not chunks:
                         continue
                     samples = np.concatenate(chunks).astype(np.float32) / 32768.0
+                    # EQ, compression and widening, per sentence. Done on
+                    # the synthesis thread so it never stalls playback --
+                    # it costs about 10 ms against 250 ms of synthesis.
+                    if self.fx is None or self.fx.enabled:
+                        from . import audio_fx
+                        samples = audio_fx.process(samples, rate, self.fx)
                     ready.put((sentence, samples))
             except Exception:
                 pass

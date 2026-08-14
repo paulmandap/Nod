@@ -265,6 +265,8 @@ def main() -> int:
                     help="which voice inside a multi-speaker model")
     ap.add_argument("--voice-length-scale", type=float, default=None,
                     help="speech pace; above 1.0 is slower")
+    ap.add_argument("--persona", default=None, choices=["plain", "butler"],
+                    help="how Nod phrases things")
     # The wake word's energy thresholds. Exposed because the built-in values are
     # tuned to a close-talk headset: on a laptop's built-in array mic, speech
     # lands well under START_RMS and the wake word never fires at all, with no
@@ -372,11 +374,12 @@ def main() -> int:
         "command-listener": lambda: CommandListener(
             bus, speaker, args.wake_model, args.device, args.compute_type,
             args.wake_language, start_rms=args.start_rms,
-            stop_rms=args.stop_rms),
+            stop_rms=args.stop_rms, persona_name=args.persona),
         "agent": lambda: Agent(
             bus, speaker, camera_hint=args.camera,
             local_intent=args.local_intent,
-            allow_unconfirmed_camera=args.allow_unconfirmed_camera),
+            allow_unconfirmed_camera=args.allow_unconfirmed_camera,
+            persona_name=args.persona),
     }
     if not args.no_vision:
         from .vision import ScreenReader          # see the note by the imports

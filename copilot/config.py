@@ -83,6 +83,7 @@ DEFAULTS = {
     "voice_model": None,      # a specific .onnx; None = newest in ~/.nod/voices
     "voice_speaker_id": None, # which voice inside a multi-speaker model
     "voice_length_scale": None,  # >1.0 is slower and more composed
+    "persona": "plain",       # "plain" or "butler"; see persona.py
 
     "agent": True,
     "no_summary": True,

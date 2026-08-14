@@ -38,6 +38,7 @@ OFFLINE = [
     "test_spoken_errors.py",
     "test_meet_gate.py",
     "test_quota.py",
+    "test_persona.py",
     "test_supervise.py",
 ]
 

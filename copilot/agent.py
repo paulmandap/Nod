@@ -27,6 +27,7 @@ import requests
 
 from . import failure, perf
 from .bus import Bus, Suggestion
+from . import persona
 from .hardware import detect
 from .llm import RateGate
 from .llm_util import QuotaExhausted, first_candidate_text, post_gemini
@@ -38,7 +39,7 @@ from .llm_util import QuotaExhausted, first_candidate_text, post_gemini
 MODEL = os.environ.get("GEMINI_ASK_MODEL", "gemini-3.5-flash-lite")
 ENDPOINT = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 
-SYSTEM = """You are the intent parser for Nod, a desktop assistant the user \
+SYSTEM_TEMPLATE = """You are the intent parser for Nod, a desktop assistant the user \
 talks to out loud. You receive one spoken instruction, already transcribed, and \
 you decide what was being asked for.
 
@@ -99,11 +100,7 @@ before the real answer arrives. For `ask`, leave `reply` empty.
 Reserve `unknown` for genuine nonsense. "What is the airspeed velocity of an \
 unladen swallow" is a question, so it is `ask`, not unknown.
 
-Write `reply` as the single short sentence Nod says back, out loud. It is \
-speech, not text: no markdown, no lists, no emoji, and no reading out a URL. \
-Under fifteen words. Confirm the action rather than narrating it -- "Joining \
-your ten thirty now" beats "I will now attempt to join the meeting". Sound like \
-a competent assistant, not a chatbot: no "Certainly!", no "I'd be happy to".
+{reply_instructions}
 
 If the intent is unknown, say so plainly in one short sentence and do not guess.
 
@@ -131,6 +128,16 @@ English", "normally", "less simple" is plain. "More technical", "properly", \
               github.com" gives "github.com".
   note        what to remember, with the instruction stripped: "note that I'm
               working on the batch layer" gives "working on the batch layer"."""
+
+def system_prompt(name: str | None = None) -> str:
+    """The classifier prompt, with the persona's reply rules spliced in."""
+    return SYSTEM_TEMPLATE.format(
+        reply_instructions=persona.reply_instructions(name))
+
+
+# The default, kept as a module attribute because datasets/benchmark.py and
+# copilot/local_intent.py both import SYSTEM directly.
+SYSTEM = system_prompt()
 
 SCHEMA = {
     "type": "OBJECT",
@@ -194,7 +201,8 @@ class Agent(threading.Thread):
 
     def __init__(self, bus: Bus, speaker, api_key: str | None = None,
                  camera_hint: str | None = None, local_intent: bool = False,
-                 allow_unconfirmed_camera: bool = False) -> None:
+                 allow_unconfirmed_camera: bool = False,
+                 persona_name: str | None = None) -> None:
         super().__init__(name="agent")
         self.bus = bus
         self.speaker = speaker
@@ -233,13 +241,17 @@ class Agent(threading.Thread):
         self.gate = RateGate(self.RPM_LIMIT)
         # The transcript of the instruction currently being acted on.
         self._heard = ""
+        # Personality, resolved once: the prompt is rebuilt per persona
+        # rather than per request.
+        self.persona = persona_name
+        self.system = system_prompt(persona_name)
 
     # -- intent ----------------------------------------------------------
     def _classify(self, text: str) -> dict | None:
         if self.local_intent:
             from . import local_intent
             try:
-                return local_intent.classify(text, SYSTEM)
+                return local_intent.classify(text, self.system)
             except Exception as exc:
                 # Falling through to the API rather than failing: Ollama not
                 # running is a normal state, and the assistant going deaf
@@ -247,7 +259,7 @@ class Agent(threading.Thread):
                 self.bus.say(f"local intent unavailable ({type(exc).__name__})")
 
         body = {
-            "systemInstruction": {"parts": [{"text": SYSTEM}]},
+            "systemInstruction": {"parts": [{"text": self.system}]},
             "contents": [{"role": "user", "parts": [{"text": text}]}],
             "generationConfig": {
                 "temperature": 0.2,
@@ -268,7 +280,7 @@ class Agent(threading.Thread):
             try:
                 from . import local_intent
 
-                return local_intent.classify(text, SYSTEM)
+                return local_intent.classify(text, self.system)
             except Exception:
                 if not exc.per_day:
                     self.bus.speech.put("Give me a moment, I'm going too fast.")
@@ -390,7 +402,8 @@ class Agent(threading.Thread):
                         # then rest Gemini for a minute.
                         time.sleep(2.0)
                     answer, sources, steps = brain.ask(
-                        question, self.api_key, self.style, self.history)
+                        question, self.api_key, self.style, self.history,
+                        persona_name=self.persona)
                 except QuotaExhausted as exc:
                     local_only = True
                     self._rest_gemini(exc)

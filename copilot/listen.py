@@ -267,6 +267,7 @@ class CommandListener(threading.Thread):
     # "Mhm" is, so it spelled it out letter by letter -- "em aitch em" -- which
     # is the opposite of a relaxed grunt of acknowledgement. Written-out
     # vocalisations ("uh huh", "hmm") fail the same way.
+    # Replaced per persona at construction; see copilot/persona.py.
     ACKS = ("Yes?", "Yes, boss?", "Go ahead.")
 
     def __init__(
@@ -279,6 +280,7 @@ class CommandListener(threading.Thread):
         language: str | None = None,
         start_rms: float | None = None,
         stop_rms: float | None = None,
+        persona_name: str | None = None,
     ) -> None:
         super().__init__(name="command-listener")
         self.bus = bus
@@ -298,6 +300,10 @@ class CommandListener(threading.Thread):
             self.START_RMS = start_rms
         if stop_rms:
             self.STOP_RMS = stop_rms
+        if persona_name:
+            from . import persona
+
+            self.ACKS = persona.acks(persona_name)
         self._ack_i = 0
         self._awake_until = 0.0
         # The no-audio safety net. If nothing ever crosses START_RMS, the
