@@ -84,7 +84,8 @@ class Speaker(threading.Thread):
 
     def __init__(self, bus: Bus, voice: str | None = None,
                  rate: int | None = None, engine: str | None = None,
-                 voice_model: str | None = None) -> None:
+                 voice_model: str | None = None, speaker_id: int | None = None,
+                 length_scale: float | None = None) -> None:
         super().__init__(name="speaker")
         self.bus = bus
         self.voice = voice or VOICE_HINT
@@ -93,7 +94,15 @@ class Speaker(threading.Thread):
         # None to prefer piper and fall back when its model is not downloaded.
         self.engine = engine
         self.voice_model = voice_model
+        # For multi-speaker models: which of them to be. en_GB-vctk-medium
+        # carries 109 voices in one 75 MB file, so this is how you pick one.
+        self.speaker_id = speaker_id
+        # Pace. Above 1.0 is slower, and slower is the single most effective
+        # knob for sounding composed rather than hurried -- a measured delivery
+        # is most of what separates "an assistant" from "a text-to-speech".
+        self.length_scale = length_scale
         self._piper = None
+        self._syn = None
         self._piper_failed = False
         self._proc: subprocess.Popen | None = None
         self._lock = threading.Lock()
@@ -159,6 +168,15 @@ class Speaker(threading.Thread):
                        key=lambda p: p.stat().st_mtime, reverse=True)
         return found[0] if found else None
 
+    def _synthesis_config(self):
+        """Speaker and pace, or None to take the model's own defaults."""
+        if self.speaker_id is None and self.length_scale is None:
+            return None
+        from piper import SynthesisConfig
+
+        return SynthesisConfig(speaker_id=self.speaker_id,
+                               length_scale=self.length_scale)
+
     def _ensure_piper(self):
         """Load the voice once, and warm it up before anyone is waiting.
 
@@ -188,7 +206,8 @@ class Speaker(threading.Thread):
 
             self.bus.say(f"voice: loading {model.stem}")
             voice = PiperVoice.load(str(model))
-            list(voice.synthesize("Ready."))          # warm onnxruntime up
+            self._syn = self._synthesis_config()
+            list(voice.synthesize("Ready.", syn_config=self._syn))  # warm up
             self._piper = voice
             self.bus.say(f"voice: {model.stem}")
         except Exception as exc:
@@ -242,7 +261,8 @@ class Speaker(threading.Thread):
                     if self._cancel.is_set():
                         break
                     chunks = [np.asarray(c.audio_int16_array, dtype=np.int16)
-                              for c in voice.synthesize(sentence)]
+                              for c in voice.synthesize(
+                                  sentence, syn_config=self._syn)]
                     if not chunks:
                         continue
                     samples = np.concatenate(chunks).astype(np.float32) / 32768.0
@@ -409,6 +429,54 @@ def audition(text: str = "", model: str | None = None) -> int:
     return 0
 
 
+# Southern-English male speakers in en_GB-vctk-medium, per the VCTK corpus'
+# speaker metadata. Shortlisted from 109 because the brief was a composed RP
+# British voice, and auditioning all of them is nobody's afternoon.
+VCTK_BRITISH_MALE = {
+    "p226": 95,   # Surrey
+    "p227": 82,   # Cumbria
+    "p232": 60,   # Southern England
+    "p243": 81,   # London
+    "p254": 76,   # Surrey
+    "p258": 57,   # Southern England
+    "p273": 19,   # Suffolk
+    "p274": 10,   # Essex
+}
+
+
+def audition_vctk(text: str = "", length_scale: float = 1.45) -> int:
+    """Hear the shortlisted British male voices inside the multi-speaker model.
+
+    One 75 MB file holds 109 voices, so this is far and away the cheapest way
+    to find a timbre worth keeping. length_scale defaults slower than the
+    model's own 1.4 because an unhurried delivery is most of what makes a
+    voice sound composed rather than mechanical.
+    """
+    from .bus import Bus
+
+    model = VOICES_DIR / "en_GB-vctk-medium.onnx"
+    if not model.exists():
+        print("Download it first, from inside", VOICES_DIR)
+        print("    python -m piper.download_voices en_GB-vctk-medium")
+        return 1
+
+    line = text or ("Yes, sir. The exchange rate is about fifty eight pesos "
+                    "to the dollar. I have taken the liberty of checking.")
+    bus = Bus()
+    for name, sid in VCTK_BRITISH_MALE.items():
+        print(f"\n  {name}  (speaker {sid})")
+        sp = Speaker(bus, voice_model=str(model), speaker_id=sid,
+                     length_scale=length_scale)
+        if not sp._ensure_piper():
+            print("    could not load")
+            continue
+        sp.say_now(line)
+        time.sleep(0.5)
+
+    print("\nTo keep one:  python -m copilot.voice --set-vctk p243")
+    return 0
+
+
 if __name__ == "__main__":
     import argparse
     import time
@@ -421,7 +489,30 @@ if __name__ == "__main__":
     ap.add_argument("--set", dest="pick", default=None,
                     help="save the matching voice as the one to use")
     ap.add_argument("--say", default="", help="say this instead of the sample")
+    ap.add_argument("--vctk", action="store_true",
+                    help="audition the British male voices in the VCTK model")
+    ap.add_argument("--set-vctk", dest="set_vctk", default=None,
+                    help="keep one VCTK speaker, e.g. p243")
+    ap.add_argument("--pace", type=float, default=1.45,
+                    help="length scale; higher is slower and more composed")
     ns = ap.parse_args()
+
+    if ns.set_vctk:
+        sid = VCTK_BRITISH_MALE.get(ns.set_vctk)
+        if sid is None:
+            print(f"Unknown speaker {ns.set_vctk!r}. "
+                  f"Try one of: {', '.join(VCTK_BRITISH_MALE)}")
+            raise SystemExit(1)
+        cfg = config.load()
+        cfg["voice_model"] = str(VOICES_DIR / "en_GB-vctk-medium.onnx")
+        cfg["voice_speaker_id"] = sid
+        cfg["voice_length_scale"] = ns.pace
+        config.save(cfg)
+        print(f"Nod will now speak as VCTK {ns.set_vctk} at pace {ns.pace}")
+        raise SystemExit(0)
+
+    if ns.vctk:
+        raise SystemExit(audition_vctk(ns.say, ns.pace))
 
     if ns.pick:
         match = [p for p in _voices() if ns.pick.lower() in p.stem.lower()]

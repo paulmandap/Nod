@@ -81,6 +81,8 @@ DEFAULTS = {
     "speech_rate": None,
     "voice_engine": None,     # None = piper if downloaded, else SAPI
     "voice_model": None,      # a specific .onnx; None = newest in ~/.nod/voices
+    "voice_speaker_id": None, # which voice inside a multi-speaker model
+    "voice_length_scale": None,  # >1.0 is slower and more composed
 
     "agent": True,
     "no_summary": True,

@@ -261,6 +261,10 @@ def main() -> int:
                     help="piper is the local neural voice; sapi is Windows'")
     ap.add_argument("--voice-model", default=None,
                     help="path to a specific piper .onnx voice")
+    ap.add_argument("--voice-speaker-id", type=int, default=None,
+                    help="which voice inside a multi-speaker model")
+    ap.add_argument("--voice-length-scale", type=float, default=None,
+                    help="speech pace; above 1.0 is slower")
     # The wake word's energy thresholds. Exposed because the built-in values are
     # tuned to a close-talk headset: on a laptop's built-in array mic, speech
     # lands well under START_RMS and the wake word never fires at all, with no
@@ -346,7 +350,9 @@ def main() -> int:
     # bus because the listener must know, synchronously, whether Nod is
     # mid-sentence — otherwise it transcribes its own voice and wakes itself up.
     speaker = Speaker(bus, args.voice, args.speech_rate,
-                      engine=args.voice_engine, voice_model=args.voice_model)
+                      engine=args.voice_engine, voice_model=args.voice_model,
+                      speaker_id=args.voice_speaker_id,
+                      length_scale=args.voice_length_scale)
 
     # Factories rather than instances, because a Thread cannot be restarted once
     # run() has returned -- and restarting them is the entire point. Three of
