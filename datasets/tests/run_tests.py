@@ -39,6 +39,7 @@ OFFLINE = [
     "test_meet_gate.py",
     "test_quota.py",
     "test_persona.py",
+    "test_accent.py",
     "test_supervise.py",
 ]
 
@@ -54,8 +55,14 @@ def run(name: str) -> tuple[str, bool, float, str]:
     if not path.exists():
         return name, False, 0.0, "missing"
     started = time.time()
+    # UTF-8 explicitly. Windows defaults a captured pipe to cp1252, so a suite
+    # that prints anything outside it -- test_accent.py prints IPA -- dies with
+    # a UnicodeEncodeError that has nothing to do with what it was testing, and
+    # only when run through here rather than on its own.
+    env = dict(os.environ, PYTHONIOENCODING="utf-8")
     proc = subprocess.run([sys.executable, str(path)], cwd=str(ROOT),
-                          capture_output=True, text=True)
+                          capture_output=True, text=True, encoding="utf-8",
+                          errors="replace", env=env)
     elapsed = time.time() - started
     if proc.returncode == 0:
         return name, True, elapsed, ""

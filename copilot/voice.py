@@ -105,6 +105,9 @@ class Speaker(threading.Thread):
         self._syn = None
         # Post-processing. Replaceable so the tuning CLI can A/B it.
         self.fx = None
+        # An accent.Accent, or None to say things as the model was
+        # trained to. See copilot/accent.py.
+        self.accent = None
         self._piper_failed = False
         self._proc: subprocess.Popen | None = None
         self._lock = threading.Lock()
@@ -257,6 +260,34 @@ class Speaker(threading.Thread):
     # cutting off within a quarter second of being told to stop.
     SLICE_MS = 250
 
+    def _synth(self, voice, sentence: str):
+        """Audio for one sentence, as int16 arrays.
+
+        Without an accent this is just voice.synthesize(). With one, the same
+        work is done a layer lower so the phonemes can be rewritten in between
+        -- see copilot/accent.py, which is where an accent actually lives.
+        """
+        if self.accent is None:
+            for chunk in voice.synthesize(sentence, syn_config=self._syn):
+                yield chunk.audio_int16_array
+            return
+
+        from . import accent as accent_mod
+
+        allowed = set(voice.config.phoneme_id_map)
+        for phonemes in voice.phonemize(sentence):
+            shifted = accent_mod.apply(phonemes, self.accent, allowed)
+            ids = voice.phonemes_to_ids(shifted)
+            audio = voice.phoneme_ids_to_audio(ids, syn_config=self._syn)
+            # phoneme_ids_to_audio returns float or int16 depending on version;
+            # normalise to int16 so the caller has one thing to concatenate.
+            import numpy as _np
+
+            audio = _np.asarray(audio)
+            if audio.dtype.kind == "f":
+                audio = (_np.clip(audio, -1.0, 1.0) * 32767).astype(_np.int16)
+            yield audio
+
     def _speak_piper(self, voice, sentences: list[str]) -> None:
         """Synthesise and play, in slices small enough to stop part-way.
 
@@ -287,9 +318,8 @@ class Speaker(threading.Thread):
                 for sentence in sentences:
                     if self._cancel.is_set():
                         break
-                    chunks = [np.asarray(c.audio_int16_array, dtype=np.int16)
-                              for c in voice.synthesize(
-                                  sentence, syn_config=self._syn)]
+                    chunks = [np.asarray(c, dtype=np.int16)
+                              for c in self._synth(voice, sentence)]
                     if not chunks:
                         continue
                     samples = np.concatenate(chunks).astype(np.float32) / 32768.0

@@ -84,6 +84,7 @@ DEFAULTS = {
     "voice_speaker_id": None, # which voice inside a multi-speaker model
     "voice_length_scale": None,  # >1.0 is slower and more composed
     "persona": "plain",       # "plain" or "butler"; see persona.py
+    "accent": None,           # "ph" for Philippine English; see accent.py
 
     "agent": True,
     "no_summary": True,

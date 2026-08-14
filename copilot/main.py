@@ -267,6 +267,8 @@ def main() -> int:
                     help="speech pace; above 1.0 is slower")
     ap.add_argument("--persona", default=None, choices=["plain", "butler"],
                     help="how Nod phrases things")
+    ap.add_argument("--accent", default=None,
+                    help="pronunciation, e.g. ph for Philippine English")
     # The wake word's energy thresholds. Exposed because the built-in values are
     # tuned to a close-talk headset: on a laptop's built-in array mic, speech
     # lands well under START_RMS and the wake word never fires at all, with no
@@ -355,6 +357,13 @@ def main() -> int:
                       engine=args.voice_engine, voice_model=args.voice_model,
                       speaker_id=args.voice_speaker_id,
                       length_scale=args.voice_length_scale)
+    # Pronunciation is a property of the speaker, applied between
+    # phonemisation and synthesis. See copilot/accent.py.
+    from . import accent as accent_mod
+
+    speaker.accent = accent_mod.get(args.accent)
+    if speaker.accent and args.voice_length_scale is None:
+        speaker.length_scale = speaker.accent.length_scale
 
     # Factories rather than instances, because a Thread cannot be restarted once
     # run() has returned -- and restarting them is the entire point. Three of
