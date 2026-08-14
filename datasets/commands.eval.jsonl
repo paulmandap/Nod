@@ -1,0 +1,188 @@
+{"text": "what does api stand for please", "intent": "ask", "style": "", "query": "", "when": ""}
+{"text": "uh how do i change a tire", "intent": "ask", "style": "", "query": "", "when": ""}
+{"text": "ah how do i tie a tie", "intent": "ask", "style": "", "query": "", "when": ""}
+{"text": "what's the latest iphone", "intent": "ask", "style": "", "query": "", "when": ""}
+{"text": "so who won the game last night", "intent": "ask", "style": "", "query": "", "when": ""}
+{"text": "what's a good recipe for adobo yeah", "intent": "ask", "style": "", "query": "", "when": ""}
+{"text": "whats the traffic like on edsa", "intent": "ask", "style": "", "query": "", "when": ""}
+{"text": "whats the score in the nba game", "intent": "ask", "style": "", "query": "", "when": ""}
+{"text": "okay so how much is bitcoin right now", "intent": "ask", "style": "", "query": "", "when": ""}
+{"text": "how do i boil rice", "intent": "ask", "style": "", "query": "", "when": ""}
+{"text": "ah what's the tallest building in the world", "intent": "ask", "style": "", "query": "", "when": ""}
+{"text": "how do i change a tire", "intent": "ask", "style": "", "query": "", "when": ""}
+{"text": "what is machine learning", "intent": "ask", "style": "", "query": "", "when": ""}
+{"text": "okay so how far is the moon", "intent": "ask", "style": "", "query": "", "when": ""}
+{"text": "what does api stand for", "intent": "ask", "style": "", "query": "", "when": ""}
+{"text": "what's the population of manila um", "intent": "ask", "style": "", "query": "", "when": ""}
+{"text": "what's the capital of japan", "intent": "ask", "style": "", "query": "", "when": ""}
+{"text": "how tall is mount everest", "intent": "ask", "style": "", "query": "", "when": ""}
+{"text": "um what's the capital of japan", "intent": "ask", "style": "", "query": "", "when": ""}
+{"text": "how much is bitcoin right now", "intent": "ask", "style": "", "query": "", "when": ""}
+{"text": "what's the latest iphone um", "intent": "ask", "style": "", "query": "", "when": ""}
+{"text": "well what's the population of manila", "intent": "ask", "style": "", "query": "", "when": ""}
+{"text": "why is the sky blue", "intent": "ask", "style": "", "query": "", "when": ""}
+{"text": "what's the exchange rate for dollars to pesos yeah", "intent": "ask", "style": "", "query": "", "when": ""}
+{"text": "well why is the sky blue", "intent": "ask", "style": "", "query": "", "when": ""}
+{"text": "what causes rain please", "intent": "ask", "style": "", "query": "", "when": ""}
+{"text": "whats the tallest building in the world", "intent": "ask", "style": "", "query": "", "when": ""}
+{"text": "who wrote romeo and juliet uh", "intent": "ask", "style": "", "query": "", "when": ""}
+{"text": "whats the population of manila", "intent": "ask", "style": "", "query": "", "when": ""}
+{"text": "i want to hear ben and ben", "intent": "play_music", "style": "", "query": "ben and ben", "when": ""}
+{"text": "play the beatles uh", "intent": "play_music", "style": "", "query": "the beatles", "when": ""}
+{"text": "play me some classical music um", "intent": "play_music", "style": "", "query": "classical", "when": ""}
+{"text": "ah go on youtube and play bohemian rhapsody", "intent": "play_music", "style": "", "query": "bohemian rhapsody", "when": ""}
+{"text": "play me a song thanks", "intent": "play_music", "style": "", "query": "", "when": ""}
+{"text": "play music", "intent": "play_music", "style": "", "query": "", "when": ""}
+{"text": "play me a song", "intent": "play_music", "style": "", "query": "", "when": ""}
+{"text": "um play shape of you by ed sheeran", "intent": "play_music", "style": "", "query": "shape of you ed sheeran", "when": ""}
+{"text": "um play music", "intent": "play_music", "style": "", "query": "", "when": ""}
+{"text": "hmm go to music.youtube.com and play something", "intent": "play_music", "style": "", "query": "", "when": ""}
+{"text": "um play me some music", "intent": "play_music", "style": "", "query": "", "when": ""}
+{"text": "play shape of you by ed sheeran", "intent": "play_music", "style": "", "query": "shape of you ed sheeran", "when": ""}
+{"text": "open music.youtube.com and play some jazz", "intent": "play_music", "style": "", "query": "jazz", "when": ""}
+{"text": "so i want to hear ben and ben", "intent": "play_music", "style": "", "query": "ben and ben", "when": ""}
+{"text": "play bohemian rhapsody by queen", "intent": "play_music", "style": "", "query": "bohemian rhapsody queen", "when": ""}
+{"text": "patugtog ka naman", "intent": "play_music", "style": "", "query": "", "when": ""}
+{"text": "play imagine by john lennon", "intent": "play_music", "style": "", "query": "imagine john lennon", "when": ""}
+{"text": "hmm open music.youtube.com and play some jazz", "intent": "play_music", "style": "", "query": "jazz", "when": ""}
+{"text": "okay so can you play hotel california", "intent": "play_music", "style": "", "query": "hotel california", "when": ""}
+{"text": "go on youtube and play bohemian rhapsody please", "intent": "play_music", "style": "", "query": "bohemian rhapsody", "when": ""}
+{"text": "uhmmm play me some classical music", "intent": "play_music", "style": "", "query": "classical", "when": ""}
+{"text": "ah put on some jazz", "intent": "play_music", "style": "", "query": "jazz", "when": ""}
+{"text": "open music.youtube.com and play some jazz um", "intent": "play_music", "style": "", "query": "jazz", "when": ""}
+{"text": "play something", "intent": "play_music", "style": "", "query": "", "when": ""}
+{"text": "okay so play me a song", "intent": "play_music", "style": "", "query": "", "when": ""}
+{"text": "uhmmm play bohemian rhapsody by queen", "intent": "play_music", "style": "", "query": "bohemian rhapsody queen", "when": ""}
+{"text": "explain it like i'm five thanks", "intent": "style", "style": "kid", "query": "", "when": ""}
+{"text": "so paliwanag mo parang bata", "intent": "style", "style": "kid", "query": "", "when": ""}
+{"text": "well i want the proper explanation", "intent": "style", "style": "technical", "query": "", "when": ""}
+{"text": "uh can you explain that more simply", "intent": "style", "style": "kid", "query": "", "when": ""}
+{"text": "just say it normally please", "intent": "style", "style": "plain", "query": "", "when": ""}
+{"text": "explain like you're talking to a kid please", "intent": "style", "style": "kid", "query": "", "when": ""}
+{"text": "be more technical", "intent": "style", "style": "technical", "query": "", "when": ""}
+{"text": "so explain it like i'm five", "intent": "style", "style": "kid", "query": "", "when": ""}
+{"text": "um give me the technical version", "intent": "style", "style": "technical", "query": "", "when": ""}
+{"text": "explain that normally", "intent": "style", "style": "plain", "query": "", "when": ""}
+{"text": "give me the technical version um", "intent": "style", "style": "technical", "query": "", "when": ""}
+{"text": "say that in simpler terms please", "intent": "style", "style": "kid", "query": "", "when": ""}
+{"text": "can you explain that more simply", "intent": "style", "style": "kid", "query": "", "when": ""}
+{"text": "explain like you're talking to a kid", "intent": "style", "style": "kid", "query": "", "when": ""}
+{"text": "hmm explain that like im a child", "intent": "style", "style": "kid", "query": "", "when": ""}
+{"text": "join my next meeting please", "intent": "attend_meeting", "style": "", "query": "", "when": ""}
+{"text": "join the call for me please", "intent": "attend_meeting", "style": "", "query": "", "when": ""}
+{"text": "uhmmm put me in the meeting", "intent": "attend_meeting", "style": "", "query": "", "when": ""}
+{"text": "attend the daily for me", "intent": "attend_meeting", "style": "", "query": "", "when": "daily"}
+{"text": "i have a meaning can you join", "intent": "attend_meeting", "style": "", "query": "", "when": ""}
+{"text": "uh take my meeting", "intent": "attend_meeting", "style": "", "query": "", "when": ""}
+{"text": "well join my meeting", "intent": "attend_meeting", "style": "", "query": "", "when": ""}
+{"text": "i have a meeting can you join thanks", "intent": "attend_meeting", "style": "", "query": "", "when": ""}
+{"text": "attend my meeting", "intent": "attend_meeting", "style": "", "query": "", "when": ""}
+{"text": "get me into the standup um", "intent": "attend_meeting", "style": "", "query": "", "when": ""}
+{"text": "join the sprint planning uh", "intent": "attend_meeting", "style": "", "query": "", "when": "sprint planning"}
+{"text": "join my next call please", "intent": "attend_meeting", "style": "", "query": "", "when": ""}
+{"text": "okay so attend the sprint planning for me", "intent": "attend_meeting", "style": "", "query": "", "when": "sprint planning"}
+{"text": "so get me into the standup", "intent": "attend_meeting", "style": "", "query": "", "when": ""}
+{"text": "join the design review", "intent": "attend_meeting", "style": "", "query": "", "when": "design review"}
+{"text": "uhmmm take my meeting", "intent": "attend_meeting", "style": "", "query": "", "when": ""}
+{"text": "sali ka sa meaning ko", "intent": "attend_meeting", "style": "", "query": "", "when": ""}
+{"text": "join my next meeting please uh", "intent": "attend_meeting", "style": "", "query": "", "when": ""}
+{"text": "uhmmm i have a meeting can you join", "intent": "attend_meeting", "style": "", "query": "", "when": ""}
+{"text": "get me into the standup", "intent": "attend_meeting", "style": "", "query": "", "when": ""}
+{"text": "put me in the meeting", "intent": "attend_meeting", "style": "", "query": "", "when": ""}
+{"text": "ah what meeting is next", "intent": "next_meeting", "style": "", "query": "", "when": ""}
+{"text": "ah may meeting ba ako mamaya", "intent": "next_meeting", "style": "", "query": "", "when": ""}
+{"text": "anything on my calender this afternoon", "intent": "next_meeting", "style": "", "query": "", "when": ""}
+{"text": "um whats my schedule today", "intent": "next_meeting", "style": "", "query": "", "when": ""}
+{"text": "do i have any meanings", "intent": "next_meeting", "style": "", "query": "", "when": ""}
+{"text": "whats coming up", "intent": "next_meeting", "style": "", "query": "", "when": ""}
+{"text": "um anything on my calendar this afternoon", "intent": "next_meeting", "style": "", "query": "", "when": ""}
+{"text": "am i free right now yeah", "intent": "next_meeting", "style": "", "query": "", "when": ""}
+{"text": "anything on my calendar this afternoon", "intent": "next_meeting", "style": "", "query": "", "when": ""}
+{"text": "do i have anything after lunch", "intent": "next_meeting", "style": "", "query": "", "when": ""}
+{"text": "anything on my calendar this afternoon please", "intent": "next_meeting", "style": "", "query": "", "when": ""}
+{"text": "uh anything on my calendar this afternoon", "intent": "next_meeting", "style": "", "query": "", "when": ""}
+{"text": "ah what's my schedule today", "intent": "next_meeting", "style": "", "query": "", "when": ""}
+{"text": "get off my screen um", "intent": "hide", "style": "", "query": "", "when": ""}
+{"text": "shush please", "intent": "hide", "style": "", "query": "", "when": ""}
+{"text": "ah itago mo sarili mo", "intent": "hide", "style": "", "query": "", "when": ""}
+{"text": "well quiet", "intent": "hide", "style": "", "query": "", "when": ""}
+{"text": "thats enough", "intent": "hide", "style": "", "query": "", "when": ""}
+{"text": "uhmmm hide now", "intent": "hide", "style": "", "query": "", "when": ""}
+{"text": "cancel that please", "intent": "hide", "style": "", "query": "", "when": ""}
+{"text": "hmm get off my screen", "intent": "hide", "style": "", "query": "", "when": ""}
+{"text": "that's enough thanks", "intent": "hide", "style": "", "query": "", "when": ""}
+{"text": "stop speaking", "intent": "hide", "style": "", "query": "", "when": ""}
+{"text": "enough thanks", "intent": "hide", "style": "", "query": "", "when": ""}
+{"text": "tama na uh", "intent": "hide", "style": "", "query": "", "when": ""}
+{"text": "stop talking", "intent": "hide", "style": "", "query": "", "when": ""}
+{"text": "shut up um", "intent": "hide", "style": "", "query": "", "when": ""}
+{"text": "stop talking please", "intent": "hide", "style": "", "query": "", "when": ""}
+{"text": "quiet please", "intent": "hide", "style": "", "query": "", "when": ""}
+{"text": "hide the overlay", "intent": "hide", "style": "", "query": "", "when": ""}
+{"text": "hmm shut up", "intent": "hide", "style": "", "query": "", "when": ""}
+{"text": "brrr", "intent": "unknown", "style": "", "query": "", "when": ""}
+{"text": "hmmmmmmm", "intent": "unknown", "style": "", "query": "", "when": ""}
+{"text": "tsk", "intent": "unknown", "style": "", "query": "", "when": ""}
+{"text": "uh stop watching my screen", "intent": "mode", "style": "", "query": "off", "when": ""}
+{"text": "watch my screen", "intent": "mode", "style": "", "query": "on", "when": ""}
+{"text": "start summarising my meeting", "intent": "mode", "style": "", "query": "on", "when": ""}
+{"text": "well are you listening to my meeting", "intent": "mode", "style": "", "query": "", "when": ""}
+{"text": "stop meaning mode", "intent": "mode", "style": "", "query": "off", "when": ""}
+{"text": "uh stop summarising", "intent": "mode", "style": "", "query": "off", "when": ""}
+{"text": "are you summarising right now", "intent": "mode", "style": "", "query": "", "when": ""}
+{"text": "so start transcribing", "intent": "mode", "style": "", "query": "on", "when": ""}
+{"text": "turn off meaning mode", "intent": "mode", "style": "", "query": "off", "when": ""}
+{"text": "start transcribing uh", "intent": "mode", "style": "", "query": "on", "when": ""}
+{"text": "what mode are you in", "intent": "mode", "style": "", "query": "", "when": ""}
+{"text": "are you listening to my meeting", "intent": "mode", "style": "", "query": "", "when": ""}
+{"text": "stop listening to my meaning", "intent": "mode", "style": "", "query": "off", "when": ""}
+{"text": "start summarising my meaning", "intent": "mode", "style": "", "query": "on", "when": ""}
+{"text": "watch my screen um", "intent": "mode", "style": "", "query": "on", "when": ""}
+{"text": "stop watching my screen thanks", "intent": "mode", "style": "", "query": "off", "when": ""}
+{"text": "ah read my screen", "intent": "mode", "style": "", "query": "on", "when": ""}
+{"text": "start taking notes", "intent": "mode", "style": "", "query": "on", "when": ""}
+{"text": "so start summarising", "intent": "mode", "style": "", "query": "on", "when": ""}
+{"text": "ah listen to what's playing", "intent": "mode", "style": "", "query": "on", "when": ""}
+{"text": "start meeting mode", "intent": "mode", "style": "", "query": "on", "when": ""}
+{"text": "um stop meeting mode", "intent": "mode", "style": "", "query": "off", "when": ""}
+{"text": "start summarising", "intent": "mode", "style": "", "query": "on", "when": ""}
+{"text": "um what's my microphone set to", "intent": "hardware", "style": "", "query": "", "when": ""}
+{"text": "anong mic ang gamit mo yeah", "intent": "hardware", "style": "", "query": "", "when": ""}
+{"text": "which speakers are you on yeah", "intent": "hardware", "style": "", "query": "", "when": ""}
+{"text": "what camera is set up yeah", "intent": "hardware", "style": "", "query": "", "when": ""}
+{"text": "which camara do you use", "intent": "hardware", "style": "", "query": "", "when": ""}
+{"text": "check my devices", "intent": "hardware", "style": "", "query": "", "when": ""}
+{"text": "um what hardware are you using", "intent": "hardware", "style": "", "query": "", "when": ""}
+{"text": "what devices are you using yeah", "intent": "hardware", "style": "", "query": "", "when": ""}
+{"text": "um check my devices", "intent": "hardware", "style": "", "query": "", "when": ""}
+{"text": "are you using my headset", "intent": "hardware", "style": "", "query": "", "when": ""}
+{"text": "which speakers are you on", "intent": "hardware", "style": "", "query": "", "when": ""}
+{"text": "so remember im on leave next friday", "intent": "note", "style": "", "query": "on leave next friday", "when": ""}
+{"text": "okay so remember that the soc2 audit slipped to november", "intent": "note", "style": "", "query": "the soc2 audit slipped to november", "when": ""}
+{"text": "remember i'm on leave next friday", "intent": "note", "style": "", "query": "on leave next friday", "when": ""}
+{"text": "remember that the soc2 audit slipped to november", "intent": "note", "style": "", "query": "the soc2 audit slipped to november", "when": ""}
+{"text": "so note i'm blocked on the vendor review", "intent": "note", "style": "", "query": "blocked on the vendor review", "when": ""}
+{"text": "so remember i'm on leave next friday", "intent": "note", "style": "", "query": "on leave next friday", "when": ""}
+{"text": "well note im blocked on the vendor review", "intent": "note", "style": "", "query": "blocked on the vendor review", "when": ""}
+{"text": "note i'm blocked on the vendor review", "intent": "note", "style": "", "query": "blocked on the vendor review", "when": ""}
+{"text": "use the local model", "intent": "model", "style": "", "query": "local", "when": ""}
+{"text": "use gemini um", "intent": "model", "style": "", "query": "gemini", "when": ""}
+{"text": "so use gemini", "intent": "model", "style": "", "query": "gemini", "when": ""}
+{"text": "hmm what model are you using", "intent": "model", "style": "", "query": "", "when": ""}
+{"text": "hmm answer locally from now on", "intent": "model", "style": "", "query": "local", "when": ""}
+{"text": "are you using gemini yeah", "intent": "model", "style": "", "query": "", "when": ""}
+{"text": "go back to the cloud model", "intent": "model", "style": "", "query": "gemini", "when": ""}
+{"text": "which model is this", "intent": "model", "style": "", "query": "", "when": ""}
+{"text": "hmm which model is this", "intent": "model", "style": "", "query": "", "when": ""}
+{"text": "pakibuksan ang gmail", "intent": "open_site", "style": "", "query": "gmail", "when": ""}
+{"text": "so open gmail", "intent": "open_site", "style": "", "query": "gmail", "when": ""}
+{"text": "take me to news.ycombinator.com thanks", "intent": "open_site", "style": "", "query": "news.ycombinator.com", "when": ""}
+{"text": "open google drive", "intent": "open_site", "style": "", "query": "drive", "when": ""}
+{"text": "go to youtube", "intent": "open_site", "style": "", "query": "youtube", "when": ""}
+{"text": "pull up my email please", "intent": "open_site", "style": "", "query": "email", "when": ""}
+{"text": "well open google drive", "intent": "open_site", "style": "", "query": "drive", "when": ""}
+{"text": "go to youtube thanks", "intent": "open_site", "style": "", "query": "youtube", "when": ""}
+{"text": "well open github.com", "intent": "open_site", "style": "", "query": "github.com", "when": ""}
+{"text": "um go to github.com", "intent": "open_site", "style": "", "query": "github.com", "when": ""}
+{"text": "open gmail um", "intent": "open_site", "style": "", "query": "gmail", "when": ""}
+{"text": "uh open youtube music", "intent": "open_site", "style": "", "query": "youtube music", "when": ""}

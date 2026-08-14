@@ -1,0 +1,11 @@
+# Build-only dependencies. Not needed to run Nod from source.
+#
+#     pip install -r requirements-build.txt
+#     pyinstaller --clean --noconfirm nod.spec
+#
+# Kept separate from requirements.txt so testers running from source, and the
+# frozen build itself, never carry PyInstaller.
+
+-r requirements.txt
+
+pyinstaller~=6.6

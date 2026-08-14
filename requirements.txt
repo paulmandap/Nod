@@ -1,0 +1,47 @@
+# Nod runtime dependencies.  Python 3.10 or newer.
+#
+#     python -m venv .venv
+#     .\.venv\Scripts\Activate.ps1
+#     pip install -r requirements.txt
+#
+# Pinned with ~= (compatible release) rather than >=. This gets handed to other
+# people and has to still install in six months; an unbounded >= resolves to
+# whatever major version ships next.
+#
+# Separately installed, not pip: Tesseract (optional, screen reading), Ollama
+# (optional, --local-intent), and a Chromium browser (Brave/Chrome/Edge).
+
+# --- capture ---
+soundcard~=0.4.3          # WASAPI / PulseAudio loopback
+mss~=9.0                  # fast native screen grab
+opencv-python~=4.9        # OCR preprocessing
+pytesseract~=0.3.10       # needs the tesseract binary installed separately
+pygetwindow~=0.0.9        # active-window bounds (Windows/macOS)
+
+# --- transcription ---
+faster-whisper~=1.0
+numpy~=1.24
+
+# --- llm ---
+requests~=2.31            # Gemini via REST; no SDK needed
+
+# --- browser control ---
+# meet.py drives Chrome over the DevTools protocol. This was missing until it
+# was caught by an audit: it is imported inside meet.Tab.__init__ rather than at
+# module scope, so nothing failed at startup -- "attend my meeting", "play
+# music" and "open youtube" simply all reported "I couldn't do that" on any
+# machine where it happened not to be installed.
+websocket-client~=1.7
+
+# --- calendar ---
+# Only needed for the Google Calendar OAuth path; the NOD_ICS_URL path works
+# without them. agenda.py catches the ImportError and degrades to "your
+# calendar isn't connected yet", which is honest but sends you looking in the
+# wrong place, so they are listed rather than left implicit.
+google-api-python-client~=2.100
+google-auth-oauthlib~=1.2
+python-dateutil~=2.9      # RRULE expansion for recurring meetings in ICS mode
+
+# --- ui ---
+PyQt6~=6.6
+pynput~=1.7               # global hotkeys

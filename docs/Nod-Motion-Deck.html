@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nod — motion pitch</title>
+<style>
+  :root{
+    --ink:#0B131B; --panel:#16232F; --panel2:#1E2E3C; --line:#2C3F50;
+    --teal:#5EC8C0; --amber:#E3A857; --blue:#8CA8D6; --violet:#B58CD6;
+    --text:#E8EFF5; --muted:#93A6B6; --dim:#6B7E8D;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:#05090d;overflow:hidden}
+  body{font-family:var(--sans);color:var(--text);display:grid;place-items:center}
+
+  /* 16:9 stage that scales to fit any window */
+  #stage{position:relative;width:100vw;height:56.25vw;max-height:100vh;max-width:177.78vh;
+    background:var(--ink);overflow:hidden;--u:calc(100% / 1280)}
+  .scene{position:absolute;inset:0;opacity:0;pointer-events:none;
+    padding:6.2% 6.5%;display:flex;flex-direction:column;justify-content:center;
+    transition:opacity .55s ease}
+  .scene.on{opacity:1}
+
+  /* ---- staggered reveal: every [data-in] child animates on scene entry ---- */
+  [data-in]{opacity:0;transform:translateY(18px);
+    transition:opacity .7s cubic-bezier(.2,.7,.3,1),transform .7s cubic-bezier(.2,.7,.3,1)}
+  .on [data-in]{opacity:1;transform:none}
+  .on [data-in="1"]{transition-delay:.10s} .on [data-in="2"]{transition-delay:.22s}
+  .on [data-in="3"]{transition-delay:.34s} .on [data-in="4"]{transition-delay:.46s}
+  .on [data-in="5"]{transition-delay:.58s} .on [data-in="6"]{transition-delay:.70s}
+  .on [data-in="7"]{transition-delay:.82s} .on [data-in="8"]{transition-delay:.94s}
+
+  .eyebrow{font-size:1.05em;font-weight:700;letter-spacing:.22em;color:var(--teal);
+    text-transform:uppercase;margin-bottom:1.4em}
+  h1{font-family:var(--serif);font-weight:700;line-height:1.06;letter-spacing:-.01em}
+  h2{font-family:var(--serif);font-size:3.1em;font-weight:700;line-height:1.1;margin-bottom:.5em}
+  p{color:var(--muted);line-height:1.55}
+  .kicker{font-family:var(--serif);font-style:italic;color:var(--teal)}
+
+  /* ---- the HUD: the recurring object that ties the reel together ---- */
+  .hud{position:relative;background:var(--panel);border:1px solid var(--line);
+    border-radius:14px;padding:1.1em 1.4em 1.2em 1.9em;overflow:hidden}
+  .hud .rail{position:absolute;left:0;bottom:0;width:6px;background:var(--teal)}
+  .hud .railbg{position:absolute;left:0;top:0;bottom:0;width:6px;opacity:.22;background:var(--teal)}
+  .hud .tag{font-size:.85em;font-weight:700;letter-spacing:.24em;color:var(--teal)}
+  .hud .lead{font-size:1.65em;font-weight:700;margin-top:.35em;line-height:1.25}
+  .hud hr{border:0;border-top:1px solid var(--line);margin:.75em 0 .6em}
+  .hud .pt{color:var(--muted);font-size:1.02em;margin-top:.3em}
+  .hud.amber .rail,.hud.amber .railbg,.hud.amber .tag{background:var(--amber);color:var(--amber)}
+  .hud.amber .tag{background:none}
+  .on .hud .rail{animation:drain var(--drain,7s) linear forwards}
+  @keyframes drain{from{height:78%}to{height:6%}}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:1.1em}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:1.2em}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:1em}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:1.15em 1.25em}
+  .card h3{font-size:1.12em;margin-bottom:.35em;font-weight:700}
+  .card p{font-size:.95em}
+  .dot{width:.62em;height:.62em;border-radius:50%;display:inline-block;margin-right:.6em;
+    vertical-align:.06em;background:var(--teal)}
+  .num{width:1.9em;height:1.9em;border-radius:50%;display:grid;place-items:center;
+    font-weight:700;color:var(--ink);background:var(--teal);margin-bottom:.7em;font-size:.95em}
+
+  .big{font-family:var(--serif);font-size:6.4em;font-weight:700;color:var(--teal);line-height:1}
+  .leg{display:flex;align-items:center;gap:1em;background:var(--panel);
+    border:1px solid var(--line);border-radius:11px;padding:.75em 1.1em;margin-bottom:.6em}
+  .leg b{color:var(--amber);font-size:1.35em;min-width:2.4em}
+  .leg span{color:var(--muted)}
+
+  /* flowing dots along the architecture paths */
+  .flow{stroke-dasharray:5 13;stroke-linecap:round}
+  .on .flow{animation:march 1.5s linear infinite}
+  @keyframes march{to{stroke-dashoffset:-36}}
+  .on .draw{animation:draw 1.6s ease forwards}
+  @keyframes draw{to{stroke-dashoffset:0}}
+
+  /* ---- transport ---- */
+  #bar{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(255,255,255,.07)}
+  #fill{height:100%;width:0;background:var(--teal)}
+  #ticks{position:absolute;left:0;right:0;bottom:0;height:3px;display:flex;gap:2px}
+  #ticks i{flex:1;background:rgba(255,255,255,.14)}
+  #hint{position:absolute;right:1.4%;bottom:2.2%;font-size:.82em;color:var(--dim);
+    letter-spacing:.08em;transition:opacity .4s}
+  #hint.hide{opacity:0}
+  #pause{position:absolute;inset:0;display:none;place-items:center;
+    background:rgba(5,9,13,.55);font-family:var(--serif);font-size:2em;color:var(--muted)}
+  #pause.show{display:grid}
+
+  @media (prefers-reduced-motion:reduce){
+    [data-in]{transition-duration:.01s;transform:none}
+    .on .hud .rail,.on .flow,.on .draw{animation:none}
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+
+  <!-- 1 -->
+  <section class="scene" data-dur="7000">
+    <div class="hud" data-in="4" style="--drain:6s;position:absolute;left:18%;right:18%;top:7%">
+      <div class="railbg"></div><div class="rail"></div>
+      <div class="tag">TERM</div>
+      <div class="lead">SLA = the promise on how fast we fix things</div>
+      <hr><div class="pt">· Priya used it about the support contract</div>
+    </div>
+    <div style="margin-top:9%">
+      <div class="eyebrow" data-in="1">AI Hackathon · Team Nod</div>
+      <h1 data-in="2" style="font-size:6.2em"><span class="dot" style="width:.16em;height:.16em"></span>Nod</h1>
+      <p class="kicker" data-in="3" style="font-size:2em;margin-top:.25em">So you never have to fake it.</p>
+      <p data-in="5" style="font-size:1.25em;max-width:26em;margin-top:1.1em">
+        A quiet copilot that catches the thing you missed — while the meeting keeps going without you.</p>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="scene" data-dur="7500">
+    <div class="eyebrow" data-in="1" style="color:var(--amber)">The problem</div>
+    <div style="display:grid;grid-template-columns:1.15fr .85fr;gap:3em;align-items:center">
+      <div>
+        <div class="card" data-in="2" style="padding:1.6em 1.8em;font-size:1.35em;color:var(--muted);line-height:1.5">
+          "…so per the SLA we'll deprecate the v2 endpoint before the Q3 cutover, sound good?"
+        </div>
+        <p data-in="5" style="margin-top:1.6em;font-size:1.15em">
+          Someone says something fast. You don't catch it. Asking them to repeat it costs you
+          something in front of eight people — so you nod.</p>
+      </div>
+      <div>
+        <h2 data-in="3" style="font-size:2.7em">It only takes<br>one sentence.</h2>
+        <div class="card" data-in="6" style="background:var(--panel2)">
+          <b>Then you spend five minutes lost instead of listening.</b>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="scene" data-dur="8000">
+    <div class="eyebrow" data-in="1">Who this is for</div>
+    <h2 data-in="2">This is not a niche problem.</h2>
+    <div class="grid2">
+      <div class="card" data-in="3"><h3><span class="dot"></span>You're hard of hearing</h3><p>Captions help. Catching up helps more.</p></div>
+      <div class="card" data-in="4"><h3><span class="dot" style="background:var(--blue)"></span>English is your second language</h3><p>You knew every word. You needed one more beat.</p></div>
+      <div class="card" data-in="5"><h3><span class="dot" style="background:var(--amber)"></span>Your attention wandered</h3><p>Happens to everyone, usually at the worst moment.</p></div>
+      <div class="card" data-in="6"><h3><span class="dot" style="background:var(--violet)"></span>It's your fifth call today</h3><p>By 4pm nobody is really processing anything.</p></div>
+    </div>
+    <p class="kicker" data-in="7" style="font-size:1.4em;margin-top:1.2em">Four different reasons. Exactly one fix.</p>
+  </section>
+
+  <!-- 4 -->
+  <section class="scene" data-dur="8000">
+    <div class="eyebrow" data-in="1">The product</div>
+    <h2 data-in="2" style="margin-bottom:.7em">Meet Nod.</h2>
+    <div class="hud amber" data-in="3" style="--drain:7s">
+      <div class="railbg"></div><div class="rail"></div>
+      <div class="tag">REPLY</div>
+      <div class="lead">Marco asked if your team can ship by the 14th</div>
+      <hr>
+      <div class="pt">· Two tickets still open on your board</div>
+      <div class="pt">· He offered to move QA to the 16th</div>
+    </div>
+    <p class="kicker" data-in="6" style="font-size:1.35em;margin-top:1.4em;text-align:center">
+      This is the whole interface. There is no window to open and nothing to click.</p>
+  </section>
+
+  <!-- 5 -->
+  <section class="scene" data-dur="8000">
+    <div class="eyebrow" data-in="1">How it works</div>
+    <h2 data-in="2">Three things, on a loop.</h2>
+    <div class="grid3">
+      <div class="card" data-in="3">
+        <svg width="46" height="46" viewBox="0 0 46 46" style="margin-bottom:.5em">
+          <circle cx="14" cy="23" r="5" fill="#5EC8C0"/>
+          <path d="M24 12 a16 16 0 0 1 0 22" stroke="#5EC8C0" stroke-width="4" fill="none" stroke-linecap="round"/>
+          <path d="M32 6 a26 26 0 0 1 0 34" stroke="#5EC8C0" stroke-width="4" fill="none" stroke-linecap="round" opacity=".5"/>
+        </svg>
+        <h3>It hears</h3><p>Whatever your speakers play, turned into text on your laptop.</p>
+      </div>
+      <div class="card" data-in="4">
+        <svg width="46" height="46" viewBox="0 0 46 46" style="margin-bottom:.5em">
+          <path d="M6 23 q17 -16 34 0 q-17 16 -34 0z" stroke="#8CA8D6" stroke-width="4" fill="none"/>
+          <circle cx="23" cy="23" r="6" fill="#8CA8D6"/>
+        </svg>
+        <h3>It reads</h3><p>The slide being shared, including the small print.</p>
+      </div>
+      <div class="card" data-in="5">
+        <svg width="46" height="46" viewBox="0 0 46 46" style="margin-bottom:.5em">
+          <rect x="4" y="12" width="38" height="22" rx="6" stroke="#E3A857" stroke-width="4" fill="none"/>
+          <rect x="8" y="16" width="4" height="14" rx="2" fill="#E3A857"/>
+          <rect x="17" y="19" width="19" height="4" rx="2" fill="#E3A857" opacity=".75"/>
+          <rect x="17" y="26" width="12" height="3" rx="1.5" fill="#E3A857" opacity=".45"/>
+        </svg>
+        <h3>It whispers</h3><p>One short line at the top of your screen.</p>
+      </div>
+    </div>
+    <p data-in="6" style="text-align:center;margin-top:1.4em;color:var(--dim)">
+      Every second, forever, until you close the laptop.</p>
+  </section>
+
+  <!-- 6 -->
+  <section class="scene" data-dur="8000">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:3.5em;align-items:center">
+      <svg viewBox="0 0 460 380" style="width:100%">
+        <rect x="40" y="30" width="340" height="210" rx="12" fill="#16232F" stroke="#2C3F50" stroke-width="3"/>
+        <path d="M14 272 L406 272 L380 242 L40 242 Z" fill="#1E2E3C" stroke="#2C3F50" stroke-width="3"/>
+        <circle cx="210" cy="47" r="5" fill="#E3A857"/>
+        <g data-in="3">
+          <rect x="62" y="62" width="296" height="42" rx="8" fill="#1E2E3C" stroke="#5EC8C0" stroke-width="2"/>
+          <rect x="62" y="62" width="4" height="42" fill="#5EC8C0"/>
+          <text x="76" y="80" font-family="sans-serif" font-size="9" letter-spacing="2.4" fill="#5EC8C0" font-weight="700">SUMMARY</text>
+          <text x="76" y="97" font-family="sans-serif" font-size="14" fill="#E8EFF5" font-weight="700">Launch moved to November</text>
+        </g>
+        <circle cx="210" cy="330" r="34" fill="#1E2E3C" stroke="#2C3F50" stroke-width="3"/>
+        <circle cx="199" cy="323" r="4.5" fill="#E8EFF5"/><circle cx="221" cy="323" r="4.5" fill="#E8EFF5"/>
+        <path d="M198 342 q12 7 24 0" stroke="#E8EFF5" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path class="draw" d="M210 296 L118 108 M210 296 L302 108" stroke="#5EC8C0" stroke-width="2"
+              stroke-dasharray="220" stroke-dashoffset="220" opacity=".6" fill="none"/>
+        <path class="draw" d="M210 296 L210 56" stroke="#E3A857" stroke-width="2"
+              stroke-dasharray="240" stroke-dashoffset="240" opacity=".6" fill="none"/>
+        <text x="250" y="215" font-family="sans-serif" font-size="12" fill="#93A6B6">same glance</text>
+      </svg>
+      <div>
+        <div class="eyebrow" data-in="1">The placement</div>
+        <h2 data-in="2" style="font-size:2.7em">Why the top<br>of the screen?</h2>
+        <p data-in="4" style="font-size:1.18em"><b style="color:var(--text)">Because that's where your camera is.</b></p>
+        <p data-in="5" style="font-size:1.12em;margin-top:.8em">You read the line without ever looking away
+          from the people you're talking to. Glance down at a second monitor and everyone on the call can tell.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 -->
+  <section class="scene" data-dur="8500">
+    <div class="eyebrow" data-in="1">The design rule</div>
+    <h2 data-in="2" style="font-size:2.7em">You get one second.<br>So we designed for one second.</h2>
+    <div class="grid3">
+      <div class="card" data-in="3"><div class="num">1</div><h3>One strong line</h3>
+        <p>The fact itself, never a description of it. “Launch moved to November” — not “They discussed timing.”</p></div>
+      <div class="card" data-in="4"><div class="num" style="background:var(--amber)">2</div><h3>A bar that drains</h3>
+        <p>It tells you whether what you're reading is still true, without costing you a word of reading.</p></div>
+      <div class="card" data-in="5"><div class="num" style="background:var(--blue)">3</div><h3>Almost no movement</h3>
+        <p>Animation at the top of the screen pulls your eyes off the camera. That's the exact thing we're preventing.</p></div>
+    </div>
+  </section>
+
+  <!-- 8 -->
+  <section class="scene" data-dur="8000">
+    <div class="eyebrow" data-in="1">Honest numbers</div>
+    <h2 data-in="2">Fast enough to catch up.</h2>
+    <div style="display:grid;grid-template-columns:.8fr 1.2fr;gap:2em;align-items:center">
+      <div class="card" data-in="3" style="background:var(--panel2);text-align:center;padding:1.8em 1em">
+        <div class="big" id="counter">2–4</div>
+        <p style="margin-top:.5em">seconds, start to finish</p>
+        <p style="font-size:.9em;color:var(--dim);font-style:italic">on a laptop, no GPU</p>
+      </div>
+      <div>
+        <div class="leg" data-in="4"><b>≈1s</b><span>to notice you stopped talking</span></div>
+        <div class="leg" data-in="5"><b>≈1s</b><span>for Whisper to write it down</span></div>
+        <div class="leg" data-in="6"><b>≈1s</b><span>for Claude to say it shorter</span></div>
+      </div>
+    </div>
+    <p class="kicker" data-in="7" style="font-size:1.35em;margin-top:1.3em">
+      Not fast enough to script you — and we built it that way on purpose.</p>
+  </section>
+
+  <!-- 9 -->
+  <section class="scene" data-dur="8500">
+    <div class="eyebrow" data-in="1">Under the hood</div>
+    <h2 data-in="2" style="font-size:2.5em">Five workers that never touch each other.</h2>
+    <svg viewBox="0 0 1000 340" style="width:100%" data-in="3">
+      <rect x="4" y="4" width="592" height="332" rx="14" fill="none" stroke="#5EC8C0" stroke-width="2" stroke-dasharray="9 8"/>
+      <text x="24" y="30" font-family="sans-serif" font-size="12" font-weight="700" letter-spacing="1.6" fill="#5EC8C0">STAYS ON YOUR LAPTOP</text>
+      <g font-family="sans-serif" text-anchor="middle">
+        <rect x="30" y="50" width="240" height="60" rx="10" fill="#16232F" stroke="#2C3F50" stroke-width="2"/>
+        <text x="150" y="76" font-size="16" font-weight="700" fill="#E8EFF5">Meeting audio</text>
+        <text x="150" y="96" font-size="12" fill="#93A6B6">from your speakers</text>
+        <rect x="330" y="50" width="240" height="60" rx="10" fill="#16232F" stroke="#2C3F50" stroke-width="2"/>
+        <text x="450" y="76" font-size="16" font-weight="700" fill="#E8EFF5">Shared screen</text>
+        <text x="450" y="96" font-size="12" fill="#93A6B6">grabbed once a second</text>
+        <rect x="30" y="150" width="240" height="60" rx="10" fill="#16232F" stroke="#5EC8C0" stroke-width="2"/>
+        <text x="150" y="176" font-size="16" font-weight="700" fill="#E8EFF5">Whisper</text>
+        <text x="150" y="196" font-size="12" fill="#93A6B6">speech turned into text</text>
+        <rect x="330" y="150" width="240" height="60" rx="10" fill="#16232F" stroke="#8CA8D6" stroke-width="2"/>
+        <text x="450" y="176" font-size="16" font-weight="700" fill="#E8EFF5">Tesseract</text>
+        <text x="450" y="196" font-size="12" fill="#93A6B6">reads text off the slide</text>
+        <rect x="30" y="250" width="540" height="60" rx="10" fill="#16232F" stroke="#2C3F50" stroke-width="2"/>
+        <text x="300" y="276" font-size="16" font-weight="700" fill="#E8EFF5">A rolling two-minute memory</text>
+        <text x="300" y="296" font-size="12" fill="#93A6B6">the last two minutes, and nothing older</text>
+        <rect x="660" y="140" width="180" height="80" rx="10" fill="#16232F" stroke="#E3A857" stroke-width="2"/>
+        <text x="750" y="176" font-size="16" font-weight="700" fill="#E8EFF5">Claude</text>
+        <text x="750" y="196" font-size="12" fill="#93A6B6">writes one short line</text>
+        <rect x="880" y="140" width="110" height="80" rx="10" fill="#16232F" stroke="#5EC8C0" stroke-width="2"/>
+        <text x="935" y="176" font-size="15" font-weight="700" fill="#E8EFF5">Your HUD</text>
+        <text x="935" y="196" font-size="12" fill="#93A6B6">you're back</text>
+      </g>
+      <g class="flow" stroke="#5EC8C0" stroke-width="3" fill="none">
+        <path d="M150 110 L150 150"/><path d="M450 110 L450 150"/>
+        <path d="M150 210 L150 250"/><path d="M450 210 L450 250"/>
+        <path d="M570 280 L660 200"/><path d="M840 180 L880 180"/>
+      </g>
+    </svg>
+  </section>
+
+  <!-- 10 -->
+  <section class="scene" data-dur="8500">
+    <div class="eyebrow" data-in="1">The part we care about most</div>
+    <h2 data-in="2">Your meeting stays yours.</h2>
+    <div style="display:grid;grid-template-columns:1.6fr .55fr;gap:2.5em;align-items:center">
+      <div>
+        <div class="card" data-in="3" style="margin-bottom:.8em"><h3><span class="dot"></span>Nothing is recorded</h3><p>No audio file is ever written. There is nothing to leak.</p></div>
+        <div class="card" data-in="4" style="margin-bottom:.8em"><h3><span class="dot" style="background:var(--blue)"></span>The listening happens here</h3><p>Whisper runs on your machine, not in someone's data centre.</p></div>
+        <div class="card" data-in="5"><h3><span class="dot" style="background:var(--amber)"></span>Two minutes of memory</h3><p>Anything older is simply gone. Not archived — gone.</p></div>
+      </div>
+      <svg viewBox="0 0 200 200" data-in="6" style="width:100%">
+        <circle cx="100" cy="100" r="92" fill="#5EC8C0" opacity=".07"/>
+        <path class="draw" d="M100 22 L172 50 L172 106 Q172 156 100 178 Q28 156 28 106 L28 50 Z"
+              fill="#16232F" stroke="#5EC8C0" stroke-width="4" stroke-dasharray="520" stroke-dashoffset="520"/>
+        <rect x="79" y="98" width="42" height="36" rx="6" fill="#5EC8C0"/>
+        <path d="M88 98 v-13 a12 12 0 0 1 24 0 v13" stroke="#5EC8C0" stroke-width="6" fill="none"/>
+      </svg>
+    </div>
+    <p data-in="7" style="font-size:.95em;font-style:italic;color:var(--dim);margin-top:1em">
+      Recording a call has real rules in most places. The best version of this tool is one you can
+      announce at the start of the meeting — so we built that version.</p>
+  </section>
+
+  <!-- 11 -->
+  <section class="scene" data-dur="8000">
+    <div class="eyebrow" data-in="1">What we'd build next</div>
+    <h2 data-in="2">After the hackathon.</h2>
+    <div class="grid4">
+      <div class="card" data-in="3"><div class="num">1</div><h3>Your team's glossary</h3><p>It learns the acronyms your company invented last quarter.</p></div>
+      <div class="card" data-in="4"><div class="num" style="background:var(--amber)">2</div><h3>A tap on the shoulder</h3><p>A soft amber line when a question has your name on it.</p></div>
+      <div class="card" data-in="5"><div class="num" style="background:var(--blue)">3</div><h3>The one-pager</h3><p>What got decided and what's yours, waiting when you close the laptop.</p></div>
+      <div class="card" data-in="6"><div class="num" style="background:var(--violet)">4</div><h3>Works in the room</h3><p>Not every meeting you struggle in is on a screen.</p></div>
+    </div>
+    <p class="kicker" data-in="7" style="font-size:1.35em;margin-top:1.2em">
+      The first one is a weekend. The last one is a company.</p>
+  </section>
+
+  <!-- 12 -->
+  <section class="scene" data-dur="9000" style="align-items:center;text-align:center">
+    <div class="dot" data-in="1" style="width:1.1em;height:1.1em;margin:0 0 1.2em"></div>
+    <h1 data-in="2" style="font-size:4.6em">Stop faking the nod.</h1>
+    <p class="kicker" data-in="3" style="font-size:1.6em;margin-top:.6em">Nod — a real-time meeting copilot.</p>
+    <div class="card" data-in="5" style="background:var(--panel2);margin-top:2em;padding:.9em 2.2em">
+      <b style="color:var(--muted);letter-spacing:.04em">github.com/your-team/nod &nbsp;·&nbsp; Team Nod</b>
+    </div>
+  </section>
+
+  <div id="ticks"></div>
+  <div id="bar"><div id="fill"></div></div>
+  <div id="hint">space · pause &nbsp;&nbsp; ← → · skip</div>
+  <div id="pause">paused</div>
+</div>
+
+<script>
+(function(){
+  const scenes  = [...document.querySelectorAll('.scene')];
+  const durs    = scenes.map(s => +s.dataset.dur);
+  const total   = durs.reduce((a,b)=>a+b,0);
+  const before  = durs.map((_,i)=> durs.slice(0,i).reduce((a,b)=>a+b,0));
+  const fill    = document.getElementById('fill');
+  const hint    = document.getElementById('hint');
+  const pauseEl = document.getElementById('pause');
+  const ticks   = document.getElementById('ticks');
+
+  durs.forEach(d => { const i = document.createElement('i'); i.style.flex = d; ticks.appendChild(i); });
+
+  let idx = 0, sceneStart = performance.now(), playing = true, pausedAt = 0;
+
+  function show(i){
+    idx = i;
+    sceneStart = performance.now();
+    scenes.forEach((s, n) => s.classList.toggle('on', n === i));
+    // Retrigger the drain + draw animations for the incoming scene.
+    scenes[i].querySelectorAll('.rail, .draw, .flow').forEach(el => {
+      el.style.animation = 'none';
+      void el.offsetWidth;
+      el.style.animation = '';
+    });
+  }
+
+  function frame(now){
+    if(playing){
+      const inScene = now - sceneStart;
+      if(inScene >= durs[idx]){
+        show((idx + 1) % scenes.length);
+      } else {
+        fill.style.width = (100 * (before[idx] + inScene) / total) + '%';
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function setPlaying(v){
+    if(v === playing) return;
+    playing = v;
+    pauseEl.classList.toggle('show', !v);
+    if(v) sceneStart += performance.now() - pausedAt;
+    else  pausedAt = performance.now();
+  }
+
+  function step(delta){
+    setPlaying(true);
+    show((idx + delta + scenes.length) % scenes.length);
+  }
+
+  addEventListener('keydown', e => {
+    if(e.code === 'Space'){ e.preventDefault(); setPlaying(!playing); }
+    else if(e.code === 'ArrowRight'){ step(1); }
+    else if(e.code === 'ArrowLeft'){ step(-1); }
+    else if(e.key === 'f'){ document.documentElement.requestFullscreen?.(); }
+    hint.classList.add('hide');
+  });
+
+  addEventListener('click', e => {
+    step(e.clientX > innerWidth / 2 ? 1 : -1);
+    hint.classList.add('hide');
+  });
+
+  setTimeout(() => hint.classList.add('hide'), 6000);
+  show(0);
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

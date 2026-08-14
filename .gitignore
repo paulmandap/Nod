@@ -1,0 +1,35 @@
+# Virtualenv. 800+ MB, and every Scripts/*.exe shebang hardcodes the absolute
+# path it was created at, so a committed venv is broken for everyone else.
+.venv/
+venv/
+env/
+
+# Bytecode. The .pyc files embed the absolute build path of this machine.
+__pycache__/
+*.py[cod]
+*$py.class
+
+# PyInstaller output
+build/
+dist/
+*.manifest
+*.spec.bak
+
+# Nothing personal lives in this tree by design -- config, credentials, the
+# signed-in browser profile, transcripts and logs are all under ~/.nod, which
+# is outside the repo. These two lines are belt and braces in case anyone ever
+# points NOD_HOME at the project folder.
+.nod/
+*.local.json
+
+# Secrets, in case one is ever written here by mistake.
+credentials.json
+token.json
+.env
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+desktop.ini
